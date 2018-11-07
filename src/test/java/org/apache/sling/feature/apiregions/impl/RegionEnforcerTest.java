@@ -55,7 +55,7 @@ public class RegionEnforcerTest {
 
     @Test
     public void testRegionEnforcerNoConfiguration() throws Exception {
-        RegionEnforcer re = new RegionEnforcer(new Hashtable<>(), "*");
+        RegionEnforcer re = new RegionEnforcer(new Hashtable<String, Object>(), "*");
         assertEquals(0, re.bsnVerMap.size());
         assertEquals(0, re.bundleFeatureMap.size());
         assertEquals(0, re.featureRegionMap.size());
@@ -135,7 +135,7 @@ public class RegionEnforcerTest {
         System.setProperty(PROPERTIES_FILE_PREFIX + REGION_PACKAGE_FILENAME,
                 getClass().getResource("/regions1.properties").getFile());
 
-        RegionEnforcer re = new RegionEnforcer(new Hashtable<>(), "*");
+        RegionEnforcer re = new RegionEnforcer(new Hashtable<String, Object>(), "*");
         assertTrue(re.bsnVerMap.size() > 0);
         assertTrue(re.bundleFeatureMap.size() > 0);
         assertTrue(re.featureRegionMap.size() > 0);

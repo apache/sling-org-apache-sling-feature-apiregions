@@ -215,7 +215,7 @@ public class ResolverHookImplTest {
 
     private BundleCapability mockCapability(String pkg, long bundleID, String bsn, Version version) {
         Map<String, Object> attrs =
-                Collections.singletonMap(PackageNamespace.PACKAGE_NAMESPACE, pkg);
+                Collections.<String, Object>singletonMap(PackageNamespace.PACKAGE_NAMESPACE, pkg);
 
         Bundle bundle = Mockito.mock(Bundle.class);
         Mockito.when(bundle.getBundleId()).thenReturn(bundleID);
