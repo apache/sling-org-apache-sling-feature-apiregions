@@ -15,3 +15,10 @@ As the component has no dependencies on any other component, the properties file
 * `apiregions.bundles.properties` - provides the location of the `bundles.properties` file.
 * `apiregions.features.properties` - provides the location of the `features.properties` file.
 * `apiregions.regions.properties` - provides the location of the `regions.properties` file.
+
+## Enabling / disabling this component
+The component is enabled by setting the following framework property:
+
+    org.apache.sling.feature.apiregions.regions=*
+
+If this framework property is not set the component will be disabled.
