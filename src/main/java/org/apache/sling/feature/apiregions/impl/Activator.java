@@ -35,7 +35,7 @@ public class Activator implements BundleActivator {
             return; // Component not enabled
 
         Dictionary<String, Object> props = new Hashtable<>();
-        RegionEnforcer enforcer = new RegionEnforcer(props, regions);
+        RegionEnforcer enforcer = new RegionEnforcer(context, props, regions);
         context.registerService(ResolverHookFactory.class, enforcer, props);
     }
 

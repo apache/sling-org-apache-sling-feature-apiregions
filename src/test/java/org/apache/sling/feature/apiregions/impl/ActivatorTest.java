@@ -25,12 +25,13 @@ import org.mockito.Mockito;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.hooks.resolver.ResolverHookFactory;
 
+import java.io.File;
 import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.Properties;
 
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.FEATURE_REGION_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.PROPERTIES_FILE_PREFIX;
+import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.PROPERTIES_RESOURCE_PREFIX;
 
 public class ActivatorTest {
     private Properties savedProps;
@@ -50,13 +51,14 @@ public class ActivatorTest {
     @Test
     public void testStart() throws Exception {
         String f = getClass().getResource("/features1.properties").getFile();
-        System.setProperty(PROPERTIES_FILE_PREFIX + FEATURE_REGION_FILENAME, f);
 
         Dictionary<String, Object> expectedProps = new Hashtable<>();
-        expectedProps.put(FEATURE_REGION_FILENAME, f);
+        expectedProps.put(FEATURE_REGION_FILENAME, new File(f).toURI().toString());
 
         BundleContext bc = Mockito.mock(BundleContext.class);
         Mockito.when(bc.getProperty(Activator.REGIONS_PROPERTY_NAME)).thenReturn("*");
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).
+            thenReturn(f);
 
         Activator a = new Activator();
         a.start(bc);

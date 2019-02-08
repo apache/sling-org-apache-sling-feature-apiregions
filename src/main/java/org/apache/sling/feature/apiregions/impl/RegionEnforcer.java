@@ -18,15 +18,17 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
+import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
 import org.osgi.framework.hooks.resolver.ResolverHook;
 import org.osgi.framework.hooks.resolver.ResolverHookFactory;
 import org.osgi.framework.wiring.BundleRevision;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,9 +43,13 @@ import java.util.Properties;
 import java.util.Set;
 
 class RegionEnforcer implements ResolverHookFactory {
-    public static String GLOBAL_REGION = "global";
+    private static final String CLASSLOADER_PSEUDO_PROTOCOL = "classloader://";
 
-    static final String PROPERTIES_FILE_PREFIX = "apiregions.";
+    public static final String GLOBAL_REGION = "global";
+
+    static final String PROPERTIES_RESOURCE_PREFIX = "sling.feature.apiregions.resource.";
+    static final String PROPERTIES_FILE_LOCATION = "sling.feature.apiregions.location";
+
     static final String IDBSNVER_FILENAME = "idbsnver.properties";
     static final String BUNDLE_FEATURE_FILENAME = "bundles.properties";
     static final String FEATURE_REGION_FILENAME = "features.properties";
@@ -55,101 +61,127 @@ class RegionEnforcer implements ResolverHookFactory {
     final Map<String, Set<String>> regionPackageMap;
     final Set<String> enabledRegions;
 
-    RegionEnforcer(Dictionary<String, Object> regProps, String regionsProp) throws IOException {
-        File idbsnverFile = getDataFile(IDBSNVER_FILENAME);
+    RegionEnforcer(BundleContext context, Dictionary<String, Object> regProps, String regionsProp) throws Exception {
+        URI idbsnverFile = getDataFileURI(context, IDBSNVER_FILENAME);
         bsnVerMap = populateBSNVerMap(idbsnverFile);
         if (idbsnverFile != null) {
-            regProps.put(IDBSNVER_FILENAME, idbsnverFile.getAbsolutePath());
+            // Register the location as a service property for diagnostic purposes
+            regProps.put(IDBSNVER_FILENAME, idbsnverFile.toString());
         }
 
-        File bundlesFile = getDataFile(BUNDLE_FEATURE_FILENAME);
+        URI bundlesFile = getDataFileURI(context, BUNDLE_FEATURE_FILENAME);
         bundleFeatureMap = populateBundleFeatureMap(bundlesFile);
         if (bundlesFile != null) {
-            regProps.put(BUNDLE_FEATURE_FILENAME, bundlesFile.getAbsolutePath());
+            // Register the location as a service property for diagnostic purposes
+            regProps.put(BUNDLE_FEATURE_FILENAME, bundlesFile.toString());
         }
 
-        File featuresFile = getDataFile(FEATURE_REGION_FILENAME);
+        URI featuresFile = getDataFileURI(context, FEATURE_REGION_FILENAME);
         featureRegionMap = populateFeatureRegionMap(featuresFile);
         if (featuresFile != null) {
-            regProps.put(FEATURE_REGION_FILENAME, featuresFile.getAbsolutePath());
+            // Register the location as a service property for diagnostic purposes
+            regProps.put(FEATURE_REGION_FILENAME, featuresFile.toString());
         }
 
-        File regionsFile = getDataFile(REGION_PACKAGE_FILENAME);
+        URI regionsFile = getDataFileURI(context, REGION_PACKAGE_FILENAME);
         regionPackageMap = populateRegionPackageMap(regionsFile);
         if (regionsFile != null) {
-            regProps.put(REGION_PACKAGE_FILENAME, regionsFile.getAbsolutePath());
+            // Register the location as a service property for diagnostic purposes
+            regProps.put(REGION_PACKAGE_FILENAME, regionsFile.toString());
         }
 
         enabledRegions = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(regionsProp.split(","))));
     }
 
-    private Map<Map.Entry<String, Version>, List<String>> populateBSNVerMap(File idbsnverFile) throws IOException {
-        if (idbsnverFile != null && idbsnverFile.exists()) {
-            Map<Map.Entry<String, Version>, List<String>> m = new HashMap<>();
-
-            Properties p = new Properties();
-            try (InputStream is = new FileInputStream(idbsnverFile)) {
-                p.load(is);
-            }
-
-            for (String n : p.stringPropertyNames()) {
-                String[] bsnver = p.getProperty(n).split("~");
-                Map.Entry<String, Version> key = new AbstractMap.SimpleEntry<String, Version>(bsnver[0], Version.valueOf(bsnver[1]));
-                List<String> l = m.get(key);
-                if (l == null) {
-                    l = new ArrayList<>();
-                    m.put(key, l);
-                }
-                l.add(n);
-            }
-
-            Map<Map.Entry<String, Version>, List<String>> m2 = new HashMap<>();
-
-            for (Map.Entry<Map.Entry<String, Version>, List<String>> entry : m.entrySet()) {
-                m2.put(entry.getKey(), Collections.unmodifiableList(entry.getValue()));
-            }
-
-            return Collections.unmodifiableMap(m2);
-        } else {
+    private Map<Map.Entry<String, Version>, List<String>> populateBSNVerMap(URI idbsnverFile) throws IOException {
+        if (idbsnverFile == null) {
             return Collections.emptyMap();
         }
+
+        Map<Map.Entry<String, Version>, List<String>> m = new HashMap<>();
+
+        Properties p = new Properties();
+        try (InputStream is = idbsnverFile.toURL().openStream()) {
+            p.load(is);
+        }
+
+        for (String n : p.stringPropertyNames()) {
+            String[] bsnver = p.getProperty(n).split("~");
+            Map.Entry<String, Version> key = new AbstractMap.SimpleEntry<String, Version>(bsnver[0], Version.valueOf(bsnver[1]));
+            List<String> l = m.get(key);
+            if (l == null) {
+                l = new ArrayList<>();
+                m.put(key, l);
+            }
+            l.add(n);
+        }
+
+        Map<Map.Entry<String, Version>, List<String>> m2 = new HashMap<>();
+
+        for (Map.Entry<Map.Entry<String, Version>, List<String>> entry : m.entrySet()) {
+            m2.put(entry.getKey(), Collections.unmodifiableList(entry.getValue()));
+        }
+
+        return Collections.unmodifiableMap(m2);
     }
 
-    private Map<String, Set<String>> populateBundleFeatureMap(File bundlesFile) throws IOException {
+    private Map<String, Set<String>> populateBundleFeatureMap(URI bundlesFile) throws IOException {
         return loadMap(bundlesFile);
     }
 
-    private Map<String, Set<String>> populateFeatureRegionMap(File featuresFile) throws IOException {
+    private Map<String, Set<String>> populateFeatureRegionMap(URI featuresFile) throws IOException {
         return loadMap(featuresFile);
     }
 
-    private Map<String, Set<String>> populateRegionPackageMap(File regionsFile) throws IOException {
+    private Map<String, Set<String>> populateRegionPackageMap(URI regionsFile) throws IOException {
         return loadMap(regionsFile);
     }
 
-    private Map<String, Set<String>> loadMap(File propsFile) throws IOException {
+    private Map<String, Set<String>> loadMap(URI propsFile) throws IOException {
+        if (propsFile == null) {
+            return Collections.emptyMap();
+        }
         Map<String, Set<String>> m = new HashMap<>();
 
-        if (propsFile != null && propsFile.exists()) {
-            Properties p = new Properties();
-            try (InputStream is = new FileInputStream(propsFile)) {
-                p.load(is);
-            }
+        Properties p = new Properties();
+        try (InputStream is = propsFile.toURL().openStream()) {
+            p.load(is);
+        }
 
-            for (String n : p.stringPropertyNames()) {
-                String[] features = p.getProperty(n).split(",");
-                m.put(n, Collections.unmodifiableSet(new HashSet<>(Arrays.asList(features))));
-            }
+        for (String n : p.stringPropertyNames()) {
+            String[] features = p.getProperty(n).split(",");
+            m.put(n, Collections.unmodifiableSet(new HashSet<>(Arrays.asList(features))));
         }
 
         return Collections.unmodifiableMap(m);
     }
 
-    private File getDataFile(String name) throws IOException {
-        String fn = System.getProperty(PROPERTIES_FILE_PREFIX + name);
+    private URI getDataFileURI(BundleContext ctx, String name) throws IOException, URISyntaxException {
+        String fn = ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + name);
+        if (fn == null) {
+            String loc = ctx.getProperty(PROPERTIES_FILE_LOCATION);
+            if (loc != null) {
+                fn = loc + "/" + name;
+            }
+        }
+
         if (fn == null)
             return null;
-        return new File(fn);
+
+        if (fn.contains(":")) {
+            if (fn.startsWith(CLASSLOADER_PSEUDO_PROTOCOL)) {
+                // It's using the 'classloader:' protocol looks up the location from the classloader
+                String loc = fn.substring(CLASSLOADER_PSEUDO_PROTOCOL.length());
+                if (!loc.startsWith("/"))
+                    loc = "/" + loc;
+                fn = getClass().getResource(loc).toString();
+            }
+            // It's already a URL
+            return new URI(fn);
+        } else {
+            // It's a file location
+            return new File(fn).toURI();
+        }
     }
 
     @Override

@@ -18,44 +18,33 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
+import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
 
+import java.io.File;
 import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Properties;
 
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.BUNDLE_FEATURE_FILENAME;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.FEATURE_REGION_FILENAME;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.IDBSNVER_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.PROPERTIES_FILE_PREFIX;
+import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.PROPERTIES_FILE_LOCATION;
+import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.PROPERTIES_RESOURCE_PREFIX;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.REGION_PACKAGE_FILENAME;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class RegionEnforcerTest {
-    private Properties savedProps;
-
-    @Before
-    public void setup() {
-        savedProps = new Properties(); // note that new Properties(props) doesn't copy
-        savedProps.putAll(System.getProperties());
-    }
-
-    @After
-    public void teardown() {
-        System.setProperties(savedProps);
-        savedProps = null;
-    }
-
     @Test
     public void testRegionEnforcerNoConfiguration() throws Exception {
-        RegionEnforcer re = new RegionEnforcer(new Hashtable<String, Object>(), "*");
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
         assertEquals(0, re.bsnVerMap.size());
         assertEquals(0, re.bundleFeatureMap.size());
         assertEquals(0, re.featureRegionMap.size());
@@ -65,25 +54,27 @@ public class RegionEnforcerTest {
     @Test
     public void testLoadBSNVerMap() throws Exception {
         String f = getClass().getResource("/idbsnver1.properties").getFile();
-        System.setProperty(PROPERTIES_FILE_PREFIX + IDBSNVER_FILENAME, f);
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(f);
 
         Hashtable<String, Object> props = new Hashtable<>();
-        RegionEnforcer re = new RegionEnforcer(props, "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, props, "*");
         assertEquals(2, re.bsnVerMap.size());
         assertEquals(Collections.singletonList("g:b1:1"),
                 re.bsnVerMap.get(new AbstractMap.SimpleEntry<String,Version>("b1", new Version(1,0,0))));
         assertEquals(new HashSet<>(Arrays.asList("g:b2:1.2.3", "g2:b2:1.2.4")),
                 new HashSet<>(re.bsnVerMap.get(new AbstractMap.SimpleEntry<String,Version>("b2", new Version(1,2,3)))));
-        assertEquals(f, props.get(IDBSNVER_FILENAME));
+        assertEquals(new File(f).toURI().toString(), props.get(IDBSNVER_FILENAME));
     }
 
     @Test
     public void testLoadBundleFeatureMap() throws Exception {
         String f = getClass().getResource("/bundles1.properties").getFile();
-        System.setProperty(PROPERTIES_FILE_PREFIX + BUNDLE_FEATURE_FILENAME, f);
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(f);
 
         Hashtable<String, Object> props = new Hashtable<>();
-        RegionEnforcer re = new RegionEnforcer(props, "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, props, "*");
         assertEquals(3, re.bundleFeatureMap.size());
         assertEquals(Collections.singleton("org.sling:something:1.2.3:slingosgifeature:myclassifier"),
                 re.bundleFeatureMap.get("org.sling:b1:1"));
@@ -91,51 +82,54 @@ public class RegionEnforcerTest {
                 re.bundleFeatureMap.get("org.sling:b2:1"));
         assertEquals(new HashSet<>(Arrays.asList("some.other:feature:123", "org.sling:something:1.2.3:slingosgifeature:myclassifier")),
                 re.bundleFeatureMap.get("org.sling:b3:1"));
-        assertEquals(f, props.get(BUNDLE_FEATURE_FILENAME));
+        assertEquals(new File(f).toURI().toString(), props.get(BUNDLE_FEATURE_FILENAME));
     }
 
     @Test
     public void testLoadFeatureRegionMap() throws Exception {
         String f = getClass().getResource("/features1.properties").getFile();
-        System.setProperty(PROPERTIES_FILE_PREFIX + FEATURE_REGION_FILENAME, f);
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(f);
 
         Hashtable<String, Object> props = new Hashtable<>();
-        RegionEnforcer re = new RegionEnforcer(props, "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, props, "*");
         assertEquals(2, re.featureRegionMap.size());
         assertEquals(Collections.singleton("global"),
                 re.featureRegionMap.get("an.other:feature:123"));
         assertEquals(new HashSet<>(Arrays.asList("global", "internal")),
                 re.featureRegionMap.get("org.sling:something:1.2.3"));
-        assertEquals(f, props.get(FEATURE_REGION_FILENAME));
+        assertEquals(new File(f).toURI().toString(), props.get(FEATURE_REGION_FILENAME));
     }
 
     @Test
     public void testLoadRegionPackageMap() throws Exception {
         String f = getClass().getResource("/regions1.properties").getFile();
-        System.setProperty(PROPERTIES_FILE_PREFIX + REGION_PACKAGE_FILENAME, f);
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).thenReturn(f);
 
         Hashtable<String, Object> props = new Hashtable<>();
-        RegionEnforcer re = new RegionEnforcer(props, "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, props, "*");
         assertEquals(2, re.regionPackageMap.size());
         assertEquals(Collections.singleton("xyz"),
                 re.regionPackageMap.get("internal"));
         assertEquals(new HashSet<>(Arrays.asList("a.b.c", "d.e.f", "test")),
                 re.regionPackageMap.get("global"));
-        assertEquals(f, props.get(REGION_PACKAGE_FILENAME));
+        assertEquals(new File(f).toURI().toString(), props.get(REGION_PACKAGE_FILENAME));
     }
 
     @Test
     public void testBegin() throws Exception {
-        System.setProperty(PROPERTIES_FILE_PREFIX + IDBSNVER_FILENAME,
-                getClass().getResource("/idbsnver1.properties").getFile());
-        System.setProperty(PROPERTIES_FILE_PREFIX + BUNDLE_FEATURE_FILENAME,
-                getClass().getResource("/bundles1.properties").getFile());
-        System.setProperty(PROPERTIES_FILE_PREFIX + FEATURE_REGION_FILENAME,
-                getClass().getResource("/features1.properties").getFile());
-        System.setProperty(PROPERTIES_FILE_PREFIX + REGION_PACKAGE_FILENAME,
-                getClass().getResource("/regions1.properties").getFile());
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).
+            thenReturn(getClass().getResource("/idbsnver1.properties").getFile());
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).
+            thenReturn(getClass().getResource("/bundles1.properties").getFile());
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).
+            thenReturn(getClass().getResource("/features1.properties").getFile());
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).
+            thenReturn(getClass().getResource("/regions1.properties").getFile());
 
-        RegionEnforcer re = new RegionEnforcer(new Hashtable<String, Object>(), "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
         assertTrue(re.bsnVerMap.size() > 0);
         assertTrue(re.bundleFeatureMap.size() > 0);
         assertTrue(re.featureRegionMap.size() > 0);
@@ -146,5 +140,31 @@ public class RegionEnforcerTest {
         assertEquals(re.bundleFeatureMap, hook.bundleFeatureMap);
         assertEquals(re.featureRegionMap, hook.featureRegionMap);
         assertEquals(re.regionPackageMap, hook.regionPackageMap);
+    }
+
+    @Test
+    public void testURLs() throws Exception {
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        String location = new File(getClass().getResource("/props1/idbsnver.properties").
+                getFile()).getParentFile().toURI().toString();
+        Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).thenReturn(location);
+
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+        assertTrue(re.bsnVerMap.size() > 0);
+        assertTrue(re.bundleFeatureMap.size() > 0);
+        assertTrue(re.featureRegionMap.size() > 0);
+        assertTrue(re.regionPackageMap.size() > 0);
+    }
+
+    @Test
+    public void testClassloaderURLs() throws Exception {
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).thenReturn("classloader://props1");
+
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+        assertTrue(re.bsnVerMap.size() > 0);
+        assertTrue(re.bundleFeatureMap.size() > 0);
+        assertTrue(re.featureRegionMap.size() > 0);
+        assertTrue(re.regionPackageMap.size() > 0);
     }
 }
