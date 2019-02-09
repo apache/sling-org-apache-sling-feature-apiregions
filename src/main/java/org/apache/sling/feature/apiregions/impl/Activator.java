@@ -41,5 +41,6 @@ public class Activator implements BundleActivator {
 
     @Override
     public synchronized void stop(BundleContext context) throws Exception {
+        // Nothing to do
     }
 }

@@ -158,7 +158,7 @@ class ResolverHookImpl implements ResolverHook {
                 }
                 bcRegionMap.put(bc, capRegions);
 
-                HashSet<String> sharedRegions = new HashSet<String>(reqRegions);
+                HashSet<String> sharedRegions = new HashSet<>(reqRegions);
                 sharedRegions.retainAll(capRegions);
 
                 Object pkg = bc.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE);
