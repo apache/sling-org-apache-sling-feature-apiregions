@@ -25,10 +25,13 @@ import org.osgi.framework.Version;
 
 import java.io.File;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.List;
+import java.util.Set;
 
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.BUNDLE_FEATURE_FILENAME;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.FEATURE_REGION_FILENAME;
@@ -36,6 +39,7 @@ import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.IDBSNVER_F
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.PROPERTIES_FILE_LOCATION;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.PROPERTIES_RESOURCE_PREFIX;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.REGION_PACKAGE_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.SYNTHESIZED_BUNDLES_KEY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -159,12 +163,58 @@ public class RegionEnforcerTest {
     @Test
     public void testClassloaderURLs() throws Exception {
         BundleContext ctx = Mockito.mock(BundleContext.class);
-        Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).thenReturn("classloader://props1");
+        Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
+            thenReturn("classloader://props1");
 
         RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
         assertTrue(re.bsnVerMap.size() > 0);
         assertTrue(re.bundleFeatureMap.size() > 0);
         assertTrue(re.featureRegionMap.size() > 0);
         assertTrue(re.regionPackageMap.size() > 0);
+    }
+
+    @Test
+    public void testOrderingOfRegionsInFeatures() throws Exception {
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
+            thenReturn("classloader://props2");
+
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+        assertEquals(Arrays.asList("r0", "r1", "r2", "r3"),
+                new ArrayList<>(re.featureRegionMap.get("org.sling:something:1.2.3")));
+    }
+
+    @Test
+    public void testFrameworkPropertyBundleRegions() throws Exception {
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getProperty(SYNTHESIZED_BUNDLES_KEY)).thenReturn(
+                "org.foo.bar:1.2.3=org.foo:bar:1.2.3;myregion," +
+                "org.foo.jar:1.0.0=org.foo:jar:1.0.0;myregion");
+
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+
+        assertTrue(re.bsnVerMap.size() == 2);
+        List<String> al1 = re.bsnVerMap.get(new AbstractMap.SimpleEntry<>(
+                "org.foo.bar", Version.valueOf("1.2.3")));
+        assertEquals(1, al1.size());
+        String a1 = al1.iterator().next();
+
+        List<String> al2 = re.bsnVerMap.get(new AbstractMap.SimpleEntry<>(
+                "org.foo.jar", Version.valueOf("1.0.0")));
+        assertEquals(1, al2.size());
+        String a2 = al2.iterator().next();
+
+        Set<String> fl1 = re.bundleFeatureMap.get(a1);
+        assertEquals(1, fl1.size());
+        String f1 = fl1.iterator().next();
+        Set<String> fl2 = re.bundleFeatureMap.get(a2);
+        assertEquals(1, fl2.size());
+        String f2 = fl2.iterator().next();
+        assertEquals(f1, f2);
+
+        Set<String> rl = re.featureRegionMap.get(f1);
+        assertEquals(1, rl.size());
+        String r = rl.iterator().next();
+        assertEquals("myregion", r);
     }
 }

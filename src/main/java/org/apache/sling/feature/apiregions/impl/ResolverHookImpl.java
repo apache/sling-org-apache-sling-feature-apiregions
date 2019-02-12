@@ -37,11 +37,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 class ResolverHookImpl implements ResolverHook {
-    private static final Logger LOG = Logger.getLogger(ResolverHookImpl.class.getName());
-
     final Map<Map.Entry<String, Version>, List<String>> bsnVerMap;
     final Map<String, Set<String>> bundleFeatureMap;
     final Map<String, Set<String>> featureRegionMap;
@@ -158,8 +155,25 @@ class ResolverHookImpl implements ResolverHook {
                 }
                 bcRegionMap.put(bc, capRegions);
 
-                HashSet<String> sharedRegions = new HashSet<>(reqRegions);
+                List<String> sharedRegions = new ArrayList<>(reqRegions);
                 sharedRegions.retainAll(capRegions);
+
+                // Add any regions before the sharedRegions back in, as later regions inherit from earlier ones
+                List<String> capRegionList = new ArrayList<>(capRegions);
+                for (String region : new ArrayList<>(sharedRegions)) {
+                    boolean foundRegion = false;
+                    for (int i = capRegionList.size() - 1; i >= 0; i--) {
+                        String capRegion = capRegionList.get(i);
+                        if (region.equals(capRegion)) {
+                            foundRegion = true;
+                            continue;
+                        }
+                        if (foundRegion) {
+                            // Add the found region to the front of the list of shared regions
+                            sharedRegions.add(0, capRegion);
+                        }
+                    }
+                }
 
                 Object pkg = bc.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE);
                 if (pkg instanceof String) {
@@ -186,7 +200,9 @@ class ResolverHookImpl implements ResolverHook {
 
         List<BundleCapability> removedCandidates = new ArrayList<>(candidates);
         // Remove any capabilities that are not covered
-        if (candidates.retainAll(coveredCaps)) {
+        candidates.retainAll(coveredCaps);
+
+        if (candidates.isEmpty()) {
             removedCandidates.removeAll(candidates);
 
             StringBuilder sb = new StringBuilder();
@@ -203,7 +219,7 @@ class ResolverHookImpl implements ResolverHook {
                 sb.append("]");
             }
 
-            LOG.log(Level.INFO,
+            RegionEnforcer.LOG.log(Level.WARNING,
                     "API-Regions removed candidates {0} for requirement {1} as the requirement is in the following regions: {2}",
                     new Object[] {sb, requirement, reqRegions});
         }

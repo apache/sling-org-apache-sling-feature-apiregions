@@ -65,6 +65,7 @@
                         <exclude>*.md</exclude>
                         <exclude>src/test/resources/*</exclude>
                         <exclude>src/test/resources/props1/*</exclude>
+                        <exclude>src/test/resources/props2/*</exclude>
                     </excludes>
                 </configuration>
             </plugin>
