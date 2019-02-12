@@ -49,7 +49,7 @@ class RegionEnforcer implements ResolverHookFactory {
     public static final String GLOBAL_REGION = "global";
 
     static final String CLASSLOADER_PSEUDO_PROTOCOL = "classloader://";
-    static final String APIREGIONS_TOGLOBAL = "sling.feature.apiregions.toglobal";
+    static final String APIREGIONS_JOINGLOBAL = "sling.feature.apiregions.joinglobal";
     static final String PROPERTIES_RESOURCE_PREFIX = "sling.feature.apiregions.resource.";
     static final String PROPERTIES_FILE_LOCATION = "sling.feature.apiregions.location";
 
@@ -88,10 +88,10 @@ class RegionEnforcer implements ResolverHookFactory {
         regProps.put(REGION_PACKAGE_FILENAME, regionsFile.toString());
         Map<String, Set<String>> rpm = populateRegionPackageMap(regionsFile);
 
-        String toglobal = context.getProperty(APIREGIONS_TOGLOBAL);
+        String toglobal = context.getProperty(APIREGIONS_JOINGLOBAL);
         if (toglobal != null) {
-            moveRegionsToGlobal(toglobal, rpm);
-            regProps.put(APIREGIONS_TOGLOBAL, toglobal);
+            joinRegionsWithGlobal(toglobal, rpm);
+            regProps.put(APIREGIONS_JOINGLOBAL, toglobal);
         }
 
         enabledRegions = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(regionsProp.split(","))));
@@ -117,7 +117,7 @@ class RegionEnforcer implements ResolverHookFactory {
         return Collections.unmodifiableMap(m);
     }
 
-    private void moveRegionsToGlobal(String toglobal, Map<String, Set<String>> rpm) {
+    private void joinRegionsWithGlobal(String toglobal, Map<String, Set<String>> rpm) {
         for (String region : toglobal.split(",")) {
             Set<String> packages = rpm.get(region);
             if (packages == null)

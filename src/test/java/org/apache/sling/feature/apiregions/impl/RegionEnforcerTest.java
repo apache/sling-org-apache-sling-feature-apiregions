@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.APIREGIONS_TOGLOBAL;
+import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.APIREGIONS_JOINGLOBAL;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.BUNDLE_FEATURE_FILENAME;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.FEATURE_REGION_FILENAME;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.IDBSNVER_FILENAME;
@@ -141,11 +141,11 @@ public class RegionEnforcerTest {
     }
 
     @Test
-    public void testMoveRegionsToGlobal() throws Exception {
+    public void testJoinRegionsToGlobal() throws Exception {
         String e = getClass().getResource("/empty.properties").getFile();
         String f = getClass().getResource("/regions2.properties").getFile();
         BundleContext ctx = Mockito.mock(BundleContext.class);
-        Mockito.when(ctx.getProperty(APIREGIONS_TOGLOBAL)).thenReturn("obsolete,deprecated");
+        Mockito.when(ctx.getProperty(APIREGIONS_JOINGLOBAL)).thenReturn("obsolete,deprecated");
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(e);
