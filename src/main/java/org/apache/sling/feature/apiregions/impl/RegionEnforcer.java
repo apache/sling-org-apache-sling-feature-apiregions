@@ -40,7 +40,6 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -51,8 +50,6 @@ class RegionEnforcer implements ResolverHookFactory {
     static final String CLASSLOADER_PSEUDO_PROTOCOL = "classloader://";
     static final String PROPERTIES_RESOURCE_PREFIX = "sling.feature.apiregions.resource.";
     static final String PROPERTIES_FILE_LOCATION = "sling.feature.apiregions.location";
-    static final String SYNTHESIZED_BUNDLES_KEY = "sling.feature.apiregions.bundles";
-    static final String SYNTHESIZED_FEATURE = "org.apache.sling:org.apache.sling.feature.synthesized:0.0.0-SNAPSHOT";
 
     static final String IDBSNVER_FILENAME = "idbsnver.properties";
     static final String BUNDLE_FEATURE_FILENAME = "bundles.properties";
@@ -99,52 +96,7 @@ class RegionEnforcer implements ResolverHookFactory {
 
         enabledRegions = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(regionsProp.split(","))));
 
-        loadRegionsFromProperties(context, bsnVerMap, bundleFeatureMap, featureRegionMap);
         // TODO fix all collections
-    }
-
-    private static void loadRegionsFromProperties(BundleContext context,
-            Map<Entry<String, Version>, List<String>> bsnVerMap,
-            Map<String, Set<String>> bundleFeatureMap,
-            Map<String, Set<String>> featureRegionMap) {
-        String prop = context.getProperty(SYNTHESIZED_BUNDLES_KEY);
-        if (prop == null)
-            return;
-
-        for (String bundle : prop.split(",")) {
-            String[] bundleinfo = bundle.split("=");
-            if (bundleinfo.length != 2) {
-                LOG.severe("Incorrect bundle info '" + bundle + "' in " + prop);
-                continue;
-            }
-
-            String bsnver = bundleinfo[0];
-            String info = bundleinfo[1];
-
-            String[] bsnver1 = bsnver.split(":");
-            if (bsnver1.length != 2) {
-                LOG.severe("Incorrect bsn and version '" + bsnver + "' in " + prop);
-                continue;
-            }
-
-            String bsn = bsnver1[0];
-            String ver = bsnver1[1];
-
-            String[] aidregion = info.split(";");
-            if (aidregion.length != 2) {
-                LOG.severe("Incorrect artifact and region '" + aidregion + "' in " + prop);
-                continue;
-            }
-
-            String aid = aidregion[0];
-            String region = aidregion[1];
-
-            addBsnVerArtifact(bsnVerMap, bsn, ver, aid);
-            addValuesToMap(bundleFeatureMap, aid, SYNTHESIZED_FEATURE);
-            addValuesToMap(featureRegionMap, SYNTHESIZED_FEATURE, region);
-
-            LOG.info("Added bundle " +  bsnver + " as " + aid + " to feature " + region);
-        }
     }
 
     private static Map<Map.Entry<String, Version>, List<String>> populateBSNVerMap(URI idbsnverFile) throws IOException {
@@ -231,7 +183,8 @@ class RegionEnforcer implements ResolverHookFactory {
         }
 
         if (fn == null)
-            return null;
+            throw new IOException("API Region Enforcement enabled, but no configuration found to find "
+                    + "region definition resource: " + name);
 
         if (fn.contains(":")) {
             if (fn.startsWith(CLASSLOADER_PSEUDO_PROTOCOL)) {

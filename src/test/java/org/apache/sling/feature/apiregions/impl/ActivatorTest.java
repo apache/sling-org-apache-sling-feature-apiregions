@@ -30,8 +30,11 @@ import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.Properties;
 
+import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.BUNDLE_FEATURE_FILENAME;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.FEATURE_REGION_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.IDBSNVER_FILENAME;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.PROPERTIES_RESOURCE_PREFIX;
+import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.REGION_PACKAGE_FILENAME;
 
 public class ActivatorTest {
     private Properties savedProps;
@@ -50,15 +53,27 @@ public class ActivatorTest {
 
     @Test
     public void testStart() throws Exception {
+        String i = getClass().getResource("/idbsnver1.properties").getFile();
+        String b = getClass().getResource("/bundles1.properties").getFile();
         String f = getClass().getResource("/features1.properties").getFile();
+        String r = getClass().getResource("/regions1.properties").getFile();
 
         Dictionary<String, Object> expectedProps = new Hashtable<>();
+        expectedProps.put(IDBSNVER_FILENAME, new File(i).toURI().toString());
+        expectedProps.put(BUNDLE_FEATURE_FILENAME, new File(b).toURI().toString());
         expectedProps.put(FEATURE_REGION_FILENAME, new File(f).toURI().toString());
+        expectedProps.put(REGION_PACKAGE_FILENAME, new File(r).toURI().toString());
 
         BundleContext bc = Mockito.mock(BundleContext.class);
         Mockito.when(bc.getProperty(Activator.REGIONS_PROPERTY_NAME)).thenReturn("*");
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).
+            thenReturn(i);
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).
+            thenReturn(b);
         Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).
             thenReturn(f);
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).
+            thenReturn(r);
 
         Activator a = new Activator();
         a.start(bc);

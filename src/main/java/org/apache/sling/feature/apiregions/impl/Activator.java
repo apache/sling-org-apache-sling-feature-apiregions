@@ -24,6 +24,7 @@ import org.osgi.framework.hooks.resolver.ResolverHookFactory;
 
 import java.util.Dictionary;
 import java.util.Hashtable;
+import java.util.logging.Level;
 
 public class Activator implements BundleActivator {
     static final String REGIONS_PROPERTY_NAME = "org.apache.sling.feature.apiregions.regions";
@@ -35,8 +36,12 @@ public class Activator implements BundleActivator {
             return; // Component not enabled
 
         Dictionary<String, Object> props = new Hashtable<>();
-        RegionEnforcer enforcer = new RegionEnforcer(context, props, regions);
-        context.registerService(ResolverHookFactory.class, enforcer, props);
+        try {
+            RegionEnforcer enforcer = new RegionEnforcer(context, props, regions);
+            context.registerService(ResolverHookFactory.class, enforcer, props);
+        } catch (Exception e) {
+            RegionEnforcer.LOG.log(Level.SEVERE, "Problem activating API Regions runtime enforcement component", e);
+        }
     }
 
     @Override
