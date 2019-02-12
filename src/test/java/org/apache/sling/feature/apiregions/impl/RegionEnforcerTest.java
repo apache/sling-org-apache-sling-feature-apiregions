@@ -30,7 +30,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.APIREGIONS_TOGLOBAL;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.BUNDLE_FEATURE_FILENAME;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.FEATURE_REGION_FILENAME;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.IDBSNVER_FILENAME;
@@ -46,9 +50,8 @@ public class RegionEnforcerTest {
     public void testRegionEnforcerNoConfiguration() throws Exception {
         BundleContext ctx = Mockito.mock(BundleContext.class);
 
-        RegionEnforcer re;
         try {
-            re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+            new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
             fail("Expected exception. Enforcer is enabled but is missing configuration");
         } catch (Exception e) {
             // good
@@ -138,6 +141,23 @@ public class RegionEnforcerTest {
     }
 
     @Test
+    public void testMoveRegionsToGlobal() throws Exception {
+        String e = getClass().getResource("/empty.properties").getFile();
+        String f = getClass().getResource("/regions2.properties").getFile();
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getProperty(APIREGIONS_TOGLOBAL)).thenReturn("obsolete,deprecated");
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(e);
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(e);
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(e);
+        Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).thenReturn(f);
+
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+        assertEquals(1, re.regionPackageMap.size());
+        assertEquals(new HashSet<>(Arrays.asList("xyz", "a.b.c", "d.e.f", "test")),
+                re.regionPackageMap.get("global"));
+    }
+
+    @Test
     public void testBegin() throws Exception {
         BundleContext ctx = Mockito.mock(BundleContext.class);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).
@@ -199,4 +219,59 @@ public class RegionEnforcerTest {
         assertEquals(Arrays.asList("r0", "r1", "r2", "r3"),
                 new ArrayList<>(re.featureRegionMap.get("org.sling:something:1.2.3")));
     }
+
+    @Test
+    public void testUnModifiableMaps() throws Exception {
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
+            thenReturn("classloader://props1");
+
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+        assertTrue(re.bsnVerMap.size() > 0);
+        assertBSNVerMapUnmodifiable(re.bsnVerMap);
+        assertTrue(re.bundleFeatureMap.size() > 0);
+        assertMapUnmodifiable(re.bundleFeatureMap);
+        assertTrue(re.featureRegionMap.size() > 0);
+        assertMapUnmodifiable(re.featureRegionMap);
+        assertTrue(re.regionPackageMap.size() > 0);
+        assertMapUnmodifiable(re.regionPackageMap);
+    }
+
+    private void assertBSNVerMapUnmodifiable(Map<Map.Entry<String, Version>, List<String>> m) {
+        Map.Entry<Map.Entry<String, Version>, List<String>> entry = m.entrySet().iterator().next();
+        try {
+            List<String> c = entry.getValue();
+            c.add("test");
+            fail("Changing a value should have thrown an exception");
+        } catch (Exception ex) {
+            // good
+        }
+
+        try {
+            m.put(new AbstractMap.SimpleEntry<>("hi", Version.parseVersion("1.2.3")),
+                    Collections.singletonList("xyz"));
+            fail("Adding a new value should have thrown an exception");
+        } catch (Exception ex) {
+            // good
+        }
+    }
+
+    private void assertMapUnmodifiable(Map<String, Set<String>> m) {
+        Map.Entry<String, Set<String>> entry = m.entrySet().iterator().next();
+        try {
+            Set<String> s = entry.getValue();
+            s.add("testing");
+            fail("Changing a value should have thrown an exception");
+        } catch (Exception ex) {
+            // good
+        }
+
+        try {
+            m.put("foo", Collections.<String>emptySet());
+            fail("Adding a new value should have thrown an exception");
+        } catch (Exception ex) {
+            // good
+        }
+    }
+
 }
