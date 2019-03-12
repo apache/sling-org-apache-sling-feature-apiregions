@@ -272,6 +272,32 @@ public class ResolverHookImplTest {
         assertEquals(Collections.singletonList(bc13), c13);
     }
 
+    @Test
+    public void testGetRegionsForPackage() {
+        Set<String> regions = new HashSet<>(Arrays.asList("r1", "r2", "r3"));
+        Map<String, Set<String>> featureRegionMap = Collections.singletonMap("f2", regions);
+        Map<String, Set<String>> regionPackageMap = new HashMap<>();
+
+        regionPackageMap.put("r2", Collections.singleton("a.b.c"));
+        Set<String> pkgs = new HashSet<>();
+        pkgs.add("org.foo.bar");
+        pkgs.add("org.foo.zar");
+        regionPackageMap.put("r3", pkgs);
+
+        ResolverHookImpl rh = new ResolverHookImpl(
+                Collections.<Map.Entry<String, Version>, List<String>>emptyMap(),
+                Collections.<String, Set<String>>emptyMap(), featureRegionMap, regionPackageMap);
+
+        assertEquals(Collections.emptyList(), rh.getRegionsForPackage(null, "f1"));
+        assertEquals(Collections.emptyList(), rh.getRegionsForPackage("org.foo", "f1"));
+        assertEquals(Collections.emptyList(), rh.getRegionsForPackage(null, "f2"));
+
+        assertEquals(Collections.singletonList("r3"),
+            rh.getRegionsForPackage("org.foo.bar", "f2"));
+        assertEquals(Arrays.asList("r2", "r3"),
+            rh.getRegionsForPackage("a.b.c", "f2"));
+    }
+
     private BundleCapability mockCapability(String pkgName, String bid, Map<Entry<String, Version>, List<String>> bsnvermap) {
         for (Map.Entry<Map.Entry<String, Version>, List<String>> entry : bsnvermap.entrySet()) {
             if (entry.getValue().contains(bid)) {

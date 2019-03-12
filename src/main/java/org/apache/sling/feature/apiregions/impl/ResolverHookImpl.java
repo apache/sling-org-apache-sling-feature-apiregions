@@ -95,7 +95,8 @@ class ResolverHookImpl implements ResolverHook {
 
         Set<BundleCapability> coveredCaps = new HashSet<>();
 
-        Map<BundleCapability, Set<String>> bcRegionMap = new HashMap<>();
+        Map<BundleCapability, String> bcFeatureMap = new HashMap<>();
+        String packageName = null;
         nextCapability:
         for (BundleCapability bc : candidates) {
             BundleRevision rev = bc.getRevision();
@@ -153,7 +154,7 @@ class ResolverHookImpl implements ResolverHook {
                     coveredCaps.add(bc);
                     continue nextCapability;
                 }
-                bcRegionMap.put(bc, capRegions);
+                bcFeatureMap.put(bc, capFeat);
 
                 List<String> sharedRegions = new ArrayList<>(reqRegions);
                 sharedRegions.retainAll(capRegions);
@@ -177,9 +178,9 @@ class ResolverHookImpl implements ResolverHook {
 
                 Object pkg = bc.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE);
                 if (pkg instanceof String) {
-                    String packageName = (String) pkg;
+                    packageName = (String) pkg;
 
-                    Set<String> globalPackages = regionPackageMap.get("global");
+                    Set<String> globalPackages = regionPackageMap.get(RegionEnforcer.GLOBAL_REGION);
                     if (globalPackages != null && globalPackages.contains(packageName)) {
                         // If the export is in the global region everyone can access
                         coveredCaps.add(bc);
@@ -215,7 +216,7 @@ class ResolverHookImpl implements ResolverHook {
 
                 sb.append(bc.toString());
                 sb.append("[Regions: ");
-                sb.append(bcRegionMap.get(bc));
+                sb.append(getRegionsForPackage(packageName, bcFeatureMap.get(bc)));
                 sb.append("]");
             }
 
@@ -223,6 +224,33 @@ class ResolverHookImpl implements ResolverHook {
                     "API-Regions removed candidates {0} for requirement {1} as the requirement is in the following regions: {2}",
                     new Object[] {sb, requirement, reqRegions});
         }
+    }
+
+    List<String> getRegionsForPackage(String packageName, String feature) {
+        if (packageName == null)
+            return Collections.emptyList();
+
+        Set<String> regions = featureRegionMap.get(feature);
+        if (regions == null)
+            return Collections.emptyList();
+
+        List<String> res = new ArrayList<>();
+        boolean found = false;
+        for (String region : regions) {
+            Set<String> packages = regionPackageMap.get(region);
+            if (packages == null)
+                continue;
+
+            if (found) {
+                // Since later regions inherit from earlier ones, if the package has been found before
+                // it also applies to this region.
+                res.add(region);
+            } else if (packages.contains(packageName)) {
+                res.add(region);
+                found = true;
+            }
+        }
+        return res;
     }
 
     @Override
