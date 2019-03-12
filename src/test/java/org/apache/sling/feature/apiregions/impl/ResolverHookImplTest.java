@@ -291,6 +291,7 @@ public class ResolverHookImplTest {
         assertEquals(Collections.emptyList(), rh.getRegionsForPackage(null, "f1"));
         assertEquals(Collections.emptyList(), rh.getRegionsForPackage("org.foo", "f1"));
         assertEquals(Collections.emptyList(), rh.getRegionsForPackage(null, "f2"));
+        assertEquals(Collections.emptyList(), rh.getRegionsForPackage("org.foo", "f2"));
 
         assertEquals(Collections.singletonList("r3"),
             rh.getRegionsForPackage("org.foo.bar", "f2"));
