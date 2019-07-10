@@ -31,3 +31,20 @@ The component is enabled by setting the following framework property:
     org.apache.sling.feature.apiregions.regions=*
 
 If this framework property is not set the component will be disabled.
+
+### Runtime Configuration
+If this component runs in a framework with Configuration Admin present, and it is set to be enabled using the framework property, it can be disabled at runtime
+through Configuration Admin configuration.
+
+Runtime configuration supported:
+
+**PID**: `org.apache.sling.feature.apiregions.impl`
+
+Key | Value  
+--- | ---
+`disable` | if `true` then the API Regions component is disabled. Otherwise the component is enabled.
+
+No meta type is defined for this configuration since it's not a typical user setting. However, when using the web console
+the configuration can be created using `curl`: 
+
+    curl -u <user>:<pass> -X POST -d "apply=true" -d "propertylist=disable" -d "disable=true" http://localhost:8080/system/console/configMgr/org.apache.sling.feature.apiregions.impl
