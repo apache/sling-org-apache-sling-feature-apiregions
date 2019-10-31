@@ -49,11 +49,15 @@ public class Activator implements BundleActivator, FrameworkListener {
     BundleContext bundleContext;
     ServiceRegistration<ResolverHookFactory> hookRegistration;
 
+    ServiceRegistration<ResolverHookFactory> platformIsolationRegistration;
+
     @Override
     public synchronized void start(BundleContext context) throws Exception {
         bundleContext = context;
 
         registerHook();
+
+        registerPlatformIsolationEnforcer();
 
         context.addFrameworkListener(this);
     }
@@ -80,11 +84,29 @@ public class Activator implements BundleActivator, FrameworkListener {
         }
     }
 
-    synchronized void unregisterHook() {
-        if (hookRegistration != null) {
-            hookRegistration.unregister();
-            hookRegistration = null;
+    synchronized void registerPlatformIsolationEnforcer() {
+        if (platformIsolationRegistration != null) {
+            return;
         }
+
+        try {
+            PlatformIsolationEnforcer enforcer = new PlatformIsolationEnforcer(bundleContext);
+            platformIsolationRegistration = bundleContext.registerService(ResolverHookFactory.class, enforcer, new Hashtable<>());
+        } catch (Exception e) {
+            RegionEnforcer.LOG.log(Level.SEVERE, "Problem activating Platform Isolation runtime enforcement component", e);
+        }
+    }
+
+    synchronized void unregisterHooks() {
+        hookRegistration = unregisterService(hookRegistration);
+        platformIsolationRegistration = unregisterService(platformIsolationRegistration);
+    }
+
+    private <S> ServiceRegistration<S> unregisterService(ServiceRegistration<S> serviceRegistration) {
+        if (serviceRegistration != null) {
+            serviceRegistration.unregister();
+        }
+        return null;
     }
 
     @Override
@@ -133,9 +155,10 @@ public class Activator implements BundleActivator, FrameworkListener {
                                         Dictionary<?,?> props = (Dictionary<?,?>) args[0];
                                         Object disabled = props.get("disable");
                                         if ("true".equals(disabled)) {
-                                            unregisterHook();
+                                            unregisterHooks();
                                         } else {
                                             registerHook();
+                                            registerPlatformIsolationEnforcer();
                                         }
                                     }
                                 }

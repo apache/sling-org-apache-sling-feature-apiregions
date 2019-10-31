@@ -133,7 +133,7 @@ public class ActivatorTest {
     @Test
     public void testUnregisterHook() {
         Activator a = new Activator();
-        a.unregisterHook(); // Should not throw an exception
+        a.unregisterHooks(); // Should not throw an exception
         assertNull(a.hookRegistration);
     }
 
@@ -145,7 +145,7 @@ public class ActivatorTest {
         Activator a = new Activator();
         a.hookRegistration = reg;
 
-        a.unregisterHook();
+        a.unregisterHooks();
         Mockito.verify(reg).unregister();
         assertNull(a.hookRegistration);
     }
