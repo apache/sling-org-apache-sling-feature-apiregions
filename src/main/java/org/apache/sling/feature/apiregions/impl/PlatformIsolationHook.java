@@ -68,7 +68,7 @@ public class PlatformIsolationHook implements ResolverHook {
         }
     }
 
-    private boolean filter(BundleRequirement requirement, BundleCapability candidate) {
+    boolean filter(BundleRequirement requirement, BundleCapability candidate) {
         String requirementNamespace = requirement.getNamespace();
         String candidateNamespace = candidate.getNamespace();
         if (!OSGI_WIRING_PACKAGE_NAMESPACE.equals(requirementNamespace)
@@ -82,7 +82,7 @@ public class PlatformIsolationHook implements ResolverHook {
 
         Version expectedVersion = bsnVerMap.get(candidateSymbolicName);
 
-        return expectedVersion != null && expectedVersion.equals(candidateVersion);
+        return expectedVersion != null && !expectedVersion.equals(candidateVersion);
     }
 
     @Override
