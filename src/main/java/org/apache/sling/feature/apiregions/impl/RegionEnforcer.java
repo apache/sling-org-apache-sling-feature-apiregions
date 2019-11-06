@@ -43,7 +43,7 @@ import org.osgi.framework.Version;
 import org.osgi.framework.hooks.resolver.ResolverHook;
 import org.osgi.framework.wiring.BundleRevision;
 
-class RegionEnforcer extends AbstractResolverHookFactory {
+class RegionEnforcer extends AbstractResolverHookFactory<Map.Entry<String, Version>, List<String>> {
     public static final String GLOBAL_REGION = "global";
 
     static final String APIREGIONS_JOINGLOBAL = "sling.feature.apiregions.joinglobal";
@@ -66,7 +66,7 @@ class RegionEnforcer extends AbstractResolverHookFactory {
         URI idbsnverFile = getDataFileURI(context, IDBSNVER_FILENAME);
         // Register the location as a service property for diagnostic purposes
         regProps.put(IDBSNVER_FILENAME, idbsnverFile.toString());
-        Map<Entry<String, Version>, List<String>> bvm = populateBSNVerMap(idbsnverFile);
+        Map<Entry<String, Version>, List<String>> bvm = readBsnVerMap(context);
 
         URI bundlesFile = getDataFileURI(context, BUNDLE_FEATURE_FILENAME);
         // Register the location as a service property for diagnostic purposes
@@ -123,28 +123,12 @@ class RegionEnforcer extends AbstractResolverHookFactory {
         }
     }
 
-    private static Map<Map.Entry<String, Version>, List<String>> populateBSNVerMap(URI idbsnverFile) throws IOException {
-        Map<Map.Entry<String, Version>, List<String>> m = new HashMap<>();
-
-        Properties p = new Properties();
-        try (InputStream is = idbsnverFile.toURL().openStream()) {
-            p.load(is);
-        }
-
-        for (String n : p.stringPropertyNames()) {
-            String[] bsnver = p.getProperty(n).split("~");
-            addBsnVerArtifact(m, bsnver[0], bsnver[1], n);
-        }
-
-        return m;
-    }
-
-    private static void addBsnVerArtifact(
-            Map<Map.Entry<String, Version>, List<String>> bsnVerMap,
-            String bundleSymbolicName, String bundleVersion,
-            String artifactId) {
-        Version version = Version.valueOf(bundleVersion);
-        Map.Entry<String, Version> bsnVer = new AbstractMap.SimpleEntry<>(bundleSymbolicName, version);
+    @Override
+    protected void addBsnVerArtifact(Map<Entry<String, Version>, List<String>> bsnVerMap,
+                                     String artifactId,
+                                     String bundleSymbolicName,
+                                     Version bundleVersion) {
+        Map.Entry<String, Version> bsnVer = new AbstractMap.SimpleEntry<>(bundleSymbolicName, bundleVersion);
         List<String> l = bsnVerMap.get(bsnVer);
         if (l == null) {
             l = new ArrayList<>();

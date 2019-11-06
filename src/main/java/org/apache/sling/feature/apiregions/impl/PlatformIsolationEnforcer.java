@@ -19,60 +19,36 @@
 package org.apache.sling.feature.apiregions.impl;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
 import org.osgi.framework.hooks.resolver.ResolverHook;
 import org.osgi.framework.wiring.BundleRevision;
 
-public class PlatformIsolationEnforcer extends AbstractResolverHookFactory {
+public class PlatformIsolationEnforcer extends AbstractResolverHookFactory<String, Version> {
 
     final Map<String, Version> bsnVerMap;
 
     PlatformIsolationEnforcer(BundleContext context) throws IOException, URISyntaxException {
-        bsnVerMap = readBsnVerMap(context);
+        Map<String, Version> bsnVerMap = readBsnVerMap(context);
+        this.bsnVerMap = Collections.unmodifiableMap(bsnVerMap);
     }
 
-    private Map<String, Version> readBsnVerMap(BundleContext context) throws IOException, URISyntaxException {
-        final Map<String, Version> bsnVerMap = new HashMap<>();
-
-        URI idbsnverFile = getDataFileURI(context, IDBSNVER_FILENAME);
-
-        Properties p = new Properties();
-        try (InputStream is = idbsnverFile.toURL().openStream()) {
-            p.load(is);
-        }
-
-        for (Object valueObject : p.values()) {
-            if (valueObject != null) { // it shouldn't happen, but...
-                String value = valueObject.toString();
-
-                int splitIndex = value.indexOf('~');
-                if (splitIndex != -1) { // again, it shouldn't happen...
-                    String bundleSymbolicName = value.substring(0, splitIndex);
-                    String bundleVersion = value.substring(splitIndex + 1);
-                    Version version = Version.valueOf(bundleVersion);
-
-                    bsnVerMap.put(bundleSymbolicName, version);
-                }
-            }
-        }
-
-        return Collections.unmodifiableMap(bsnVerMap);
+    @Override
+    protected void addBsnVerArtifact(Map<String, Version> bsnVerMap,
+                                     String artifactId,
+                                     String bundleSymbolicName,
+                                     Version bundleVersion) {
+        bsnVerMap.put(bundleSymbolicName, bundleVersion);
     }
 
     @Override
     public ResolverHook begin(Collection<BundleRevision> triggers) {
-        // TODO Auto-generated method stub
-        return null;
+        return new PlatformIsolationHook(bsnVerMap);
     }
 
 }

@@ -20,13 +20,18 @@ package org.apache.sling.feature.apiregions.impl;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Version;
 import org.osgi.framework.hooks.resolver.ResolverHookFactory;
 
-abstract class AbstractResolverHookFactory implements ResolverHookFactory {
+abstract class AbstractResolverHookFactory<K, V> implements ResolverHookFactory {
 
     static final String CLASSLOADER_PSEUDO_PROTOCOL = "classloader://";
 
@@ -66,5 +71,37 @@ abstract class AbstractResolverHookFactory implements ResolverHookFactory {
         // It's a file location
         return new File(fn).toURI();
     }
+
+    protected final Map<K, V> readBsnVerMap(BundleContext context) throws IOException, URISyntaxException {
+        final Map<K, V> bsnVerMap = new HashMap<>();
+
+        URI idbsnverFile = getDataFileURI(context, IDBSNVER_FILENAME);
+
+        Properties properties = new Properties();
+        try (InputStream is = idbsnverFile.toURL().openStream()) {
+            properties.load(is);
+        }
+
+        for (String artifactId : properties.stringPropertyNames()) {
+            String value = properties.getProperty(artifactId);
+            if (value != null && !value.isEmpty()) { // it shouldn't happen, but...
+                int splitIndex = value.indexOf('~');
+                if (splitIndex != -1) { // again, it shouldn't happen...
+                    String bundleSymbolicName = value.substring(0, splitIndex);
+                    String bundleVersion = value.substring(splitIndex + 1);
+                    Version version = Version.valueOf(bundleVersion);
+
+                    addBsnVerArtifact(bsnVerMap, artifactId, bundleSymbolicName, version);
+                }
+            }
+        }
+
+        return bsnVerMap;
+    }
+
+    protected abstract void addBsnVerArtifact(Map<K, V> bsnVerMap,
+                                              String artifactId,
+                                              String bundleSymbolicName,
+                                              Version bundleVersion);
 
 }
