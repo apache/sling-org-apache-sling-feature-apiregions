@@ -21,6 +21,8 @@ package org.apache.sling.feature.apiregions.impl;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.osgi.framework.Version;
 import org.osgi.framework.hooks.resolver.ResolverHook;
@@ -31,6 +33,8 @@ import org.osgi.framework.wiring.BundleRevision;
 public class PlatformIsolationHook implements ResolverHook {
 
     protected static final String OSGI_WIRING_PACKAGE_NAMESPACE = "osgi.wiring.package";
+
+    static final Logger LOG = Logger.getLogger(PlatformIsolationHook.class.getName());
 
     private final Map<String, Version> bsnVerMap;
 
@@ -60,10 +64,25 @@ public class PlatformIsolationHook implements ResolverHook {
                 continue;
             }
 
+            LOG.log(Level.FINE, "Checking if "
+                                + requirement
+                                + " can resolve from "
+                                + candidate
+                                + "...");
+
             // is it a restricted bundle?
             if (filter(requirement, candidate)) {
                 it.remove();
-                // LOG.info("Prevented {} from resolving to {}", requirement, candidate);
+                LOG.log(Level.INFO, "Prevented "
+                                    + requirement
+                                    + " from resolving to "
+                                    + candidate);
+            } else if (LOG.isLoggable(Level.FINE)) {
+                LOG.log(Level.FINE, "Check OK:"
+                                    + requirement
+                                    + " can resolve to "
+                                    + candidate
+                                    + "...");
             }
         }
     }
