@@ -18,6 +18,13 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.Version;
+import org.osgi.framework.hooks.resolver.ResolverHook;
+import org.osgi.framework.hooks.resolver.ResolverHookFactory;
+import org.osgi.framework.wiring.BundleRevision;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -38,17 +45,15 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Logger;
 
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.Version;
-import org.osgi.framework.hooks.resolver.ResolverHook;
-import org.osgi.framework.wiring.BundleRevision;
-
-class RegionEnforcer extends AbstractResolverHookFactory<Map.Entry<String, Version>, List<String>> {
+class RegionEnforcer implements ResolverHookFactory {
     public static final String GLOBAL_REGION = "global";
 
+    static final String CLASSLOADER_PSEUDO_PROTOCOL = "classloader://";
     static final String APIREGIONS_JOINGLOBAL = "sling.feature.apiregions.joinglobal";
+    static final String PROPERTIES_RESOURCE_PREFIX = "sling.feature.apiregions.resource.";
+    static final String PROPERTIES_FILE_LOCATION = "sling.feature.apiregions.location";
 
-    
+    static final String IDBSNVER_FILENAME = "idbsnver.properties";
     static final String BUNDLE_FEATURE_FILENAME = "bundles.properties";
     static final String FEATURE_REGION_FILENAME = "features.properties";
     static final String REGION_PACKAGE_FILENAME = "regions.properties";
@@ -66,7 +71,7 @@ class RegionEnforcer extends AbstractResolverHookFactory<Map.Entry<String, Versi
         URI idbsnverFile = getDataFileURI(context, IDBSNVER_FILENAME);
         // Register the location as a service property for diagnostic purposes
         regProps.put(IDBSNVER_FILENAME, idbsnverFile.toString());
-        Map<Entry<String, Version>, List<String>> bvm = readBsnVerMap(context);
+        Map<Entry<String, Version>, List<String>> bvm = populateBSNVerMap(idbsnverFile);
 
         URI bundlesFile = getDataFileURI(context, BUNDLE_FEATURE_FILENAME);
         // Register the location as a service property for diagnostic purposes
@@ -123,12 +128,28 @@ class RegionEnforcer extends AbstractResolverHookFactory<Map.Entry<String, Versi
         }
     }
 
-    @Override
-    protected void addBsnVerArtifact(Map<Entry<String, Version>, List<String>> bsnVerMap,
-                                     String artifactId,
-                                     String bundleSymbolicName,
-                                     Version bundleVersion) {
-        Map.Entry<String, Version> bsnVer = new AbstractMap.SimpleEntry<>(bundleSymbolicName, bundleVersion);
+    private static Map<Map.Entry<String, Version>, List<String>> populateBSNVerMap(URI idbsnverFile) throws IOException {
+        Map<Map.Entry<String, Version>, List<String>> m = new HashMap<>();
+
+        Properties p = new Properties();
+        try (InputStream is = idbsnverFile.toURL().openStream()) {
+            p.load(is);
+        }
+
+        for (String n : p.stringPropertyNames()) {
+            String[] bsnver = p.getProperty(n).split("~");
+            addBsnVerArtifact(m, bsnver[0], bsnver[1], n);
+        }
+
+        return m;
+    }
+
+    private static void addBsnVerArtifact(
+            Map<Map.Entry<String, Version>, List<String>> bsnVerMap,
+            String bundleSymbolicName, String bundleVersion,
+            String artifactId) {
+        Version version = Version.valueOf(bundleVersion);
+        Map.Entry<String, Version> bsnVer = new AbstractMap.SimpleEntry<>(bundleSymbolicName, version);
         List<String> l = bsnVerMap.get(bsnVer);
         if (l == null) {
             l = new ArrayList<>();
@@ -176,6 +197,35 @@ class RegionEnforcer extends AbstractResolverHookFactory<Map.Entry<String, Versi
             map.put(key, bf);
         }
         bf.addAll(values);
+    }
+
+    private URI getDataFileURI(BundleContext ctx, String name) throws IOException, URISyntaxException {
+        String fn = ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + name);
+        if (fn == null) {
+            String loc = ctx.getProperty(PROPERTIES_FILE_LOCATION);
+            if (loc != null) {
+                fn = loc + "/" + name;
+            }
+        }
+
+        if (fn == null)
+            throw new IOException("API Region Enforcement enabled, but no configuration found to find "
+                    + "region definition resource: " + name);
+
+        if (fn.contains(":")) {
+            if (fn.startsWith(CLASSLOADER_PSEUDO_PROTOCOL)) {
+                // It's using the 'classloader:' protocol looks up the location from the classloader
+                String loc = fn.substring(CLASSLOADER_PSEUDO_PROTOCOL.length());
+                if (!loc.startsWith("/"))
+                    loc = "/" + loc;
+                fn = getClass().getResource(loc).toString();
+            }
+            // It's already a URL
+            return new URI(fn);
+        } else {
+            // It's a file location
+            return new File(fn).toURI();
+        }
     }
 
     @Override
