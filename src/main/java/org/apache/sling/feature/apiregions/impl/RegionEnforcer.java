@@ -54,8 +54,8 @@ class RegionEnforcer implements ResolverHookFactory {
     static final String PROPERTIES_FILE_LOCATION = "sling.feature.apiregions.location";
 
     static final String IDBSNVER_FILENAME = "idbsnver.properties";
-    static final String BUNDLE_FEATURE_FILENAME = "bundles.properties";
-    static final String FEATURE_REGION_FILENAME = "features.properties";
+    static final String BUNDLE_FEATURE_FILENAME = "bundleOrigins.properties";
+    static final String FEATURE_REGION_FILENAME = "regionOrigins.properties";
     static final String REGION_PACKAGE_FILENAME = "regions.properties";
 
     static final Logger LOG = Logger.getLogger(ResolverHookImpl.class.getName());
