@@ -22,8 +22,12 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
+import org.osgi.framework.hooks.resolver.ResolverHook;
 
 import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.net.URISyntaxException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +40,7 @@ import java.util.Set;
 
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.APIREGIONS_JOINGLOBAL;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.BUNDLE_FEATURE_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.DEFAULT_REGIONS;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.FEATURE_REGION_FILENAME;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.IDBSNVER_FILENAME;
 import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.PROPERTIES_FILE_LOCATION;
@@ -51,7 +56,7 @@ public class RegionEnforcerTest {
         BundleContext ctx = Mockito.mock(BundleContext.class);
 
         try {
-            new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+            new RegionEnforcer(ctx, new Hashtable<String, Object>());
             fail("Expected exception. Enforcer is enabled but is missing configuration");
         } catch (Exception e) {
             // good
@@ -69,7 +74,7 @@ public class RegionEnforcerTest {
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).thenReturn(e);
 
         Hashtable<String, Object> props = new Hashtable<>();
-        RegionEnforcer re = new RegionEnforcer(ctx, props, "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, props);
         assertEquals(2, re.bsnVerMap.size());
         assertEquals(Collections.singletonList("g:b1:1"),
                 re.bsnVerMap.get(new AbstractMap.SimpleEntry<String,Version>("b1", new Version(1,0,0))));
@@ -89,7 +94,7 @@ public class RegionEnforcerTest {
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).thenReturn(e);
 
         Hashtable<String, Object> props = new Hashtable<>();
-        RegionEnforcer re = new RegionEnforcer(ctx, props, "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, props);
         assertEquals(3, re.bundleFeatureMap.size());
         assertEquals(Collections.singleton("org.sling:something:1.2.3:slingosgifeature:myclassifier"),
                 re.bundleFeatureMap.get("org.sling:b1:1"));
@@ -111,7 +116,7 @@ public class RegionEnforcerTest {
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).thenReturn(e);
 
         Hashtable<String, Object> props = new Hashtable<>();
-        RegionEnforcer re = new RegionEnforcer(ctx, props, "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, props);
         assertEquals(2, re.featureRegionMap.size());
         assertEquals(Collections.singleton("global"),
                 re.featureRegionMap.get("an.other:feature:123"));
@@ -131,7 +136,7 @@ public class RegionEnforcerTest {
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).thenReturn(f);
 
         Hashtable<String, Object> props = new Hashtable<>();
-        RegionEnforcer re = new RegionEnforcer(ctx, props, "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, props);
         assertEquals(2, re.regionPackageMap.size());
         assertEquals(Collections.singleton("xyz"),
                 re.regionPackageMap.get("internal"));
@@ -151,7 +156,7 @@ public class RegionEnforcerTest {
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).thenReturn(f);
 
-        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>());
         assertEquals(1, re.regionPackageMap.size());
         assertEquals(new HashSet<>(Arrays.asList("xyz", "a.b.c", "d.e.f", "test")),
                 re.regionPackageMap.get("global"));
@@ -169,7 +174,7 @@ public class RegionEnforcerTest {
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).
             thenReturn(getClass().getResource("/regions1.properties").getFile());
 
-        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>());
         assertTrue(re.bsnVerMap.size() > 0);
         assertTrue(re.bundleFeatureMap.size() > 0);
         assertTrue(re.featureRegionMap.size() > 0);
@@ -189,7 +194,7 @@ public class RegionEnforcerTest {
                 getFile()).getParentFile().toURI().toString();
         Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).thenReturn(location);
 
-        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>());
         assertTrue(re.bsnVerMap.size() > 0);
         assertTrue(re.bundleFeatureMap.size() > 0);
         assertTrue(re.featureRegionMap.size() > 0);
@@ -202,7 +207,7 @@ public class RegionEnforcerTest {
         Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
             thenReturn("classloader://props1");
 
-        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>());
         assertTrue(re.bsnVerMap.size() > 0);
         assertTrue(re.bundleFeatureMap.size() > 0);
         assertTrue(re.featureRegionMap.size() > 0);
@@ -215,7 +220,7 @@ public class RegionEnforcerTest {
         Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
             thenReturn("classloader://props2");
 
-        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>());
         assertEquals(Arrays.asList("r0", "r1", "r2", "r3"),
                 new ArrayList<>(re.featureRegionMap.get("org.sling:something:1.2.3")));
     }
@@ -226,7 +231,7 @@ public class RegionEnforcerTest {
         Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
             thenReturn("classloader://props1");
 
-        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>(), "*");
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>());
         assertTrue(re.bsnVerMap.size() > 0);
         assertBSNVerMapUnmodifiable(re.bsnVerMap);
         assertTrue(re.bundleFeatureMap.size() > 0);
@@ -235,6 +240,30 @@ public class RegionEnforcerTest {
         assertMapUnmodifiable(re.featureRegionMap);
         assertTrue(re.regionPackageMap.size() > 0);
         assertMapUnmodifiable(re.regionPackageMap);
+    }
+
+    @Test
+    public void testDefaultRegions() throws Exception {
+        testDefaultRegions("foo.bar,foo.zar", new HashSet<>(Arrays.asList("foo.bar", "foo.zar")));
+        testDefaultRegions("test", Collections.singleton("test"));
+        testDefaultRegions("", Collections.emptySet());
+        testDefaultRegions(null, Collections.emptySet());
+    }
+
+    @SuppressWarnings("unchecked")
+    private void testDefaultRegions(String defProp, Set<String> expected)
+            throws IOException, URISyntaxException, NoSuchFieldException, IllegalAccessException {
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getProperty(DEFAULT_REGIONS)).thenReturn(defProp);
+        Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
+        thenReturn("classloader://props1");
+
+        RegionEnforcer re = new RegionEnforcer(ctx, new Hashtable<String, Object>());
+        ResolverHook hook = re.begin(Collections.emptySet());
+        Field f = ResolverHookImpl.class.getDeclaredField("defaultRegions");
+        f.setAccessible(true);
+
+        assertEquals(expected, f.get(hook));
     }
 
     private void assertBSNVerMapUnmodifiable(Map<Map.Entry<String, Version>, List<String>> m) {

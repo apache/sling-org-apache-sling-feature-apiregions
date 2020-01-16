@@ -50,12 +50,13 @@ class RegionEnforcer implements ResolverHookFactory {
 
     static final String CLASSLOADER_PSEUDO_PROTOCOL = "classloader://";
     static final String APIREGIONS_JOINGLOBAL = "sling.feature.apiregions.joinglobal";
+    static final String DEFAULT_REGIONS = "sling.feature.apiregions.default";
     static final String PROPERTIES_RESOURCE_PREFIX = "sling.feature.apiregions.resource.";
     static final String PROPERTIES_FILE_LOCATION = "sling.feature.apiregions.location";
 
     static final String IDBSNVER_FILENAME = "idbsnver.properties";
-    static final String BUNDLE_FEATURE_FILENAME = "bundleOrigins.properties";
-    static final String FEATURE_REGION_FILENAME = "regionOrigins.properties";
+    static final String BUNDLE_FEATURE_FILENAME = "bundles.properties";
+    static final String FEATURE_REGION_FILENAME = "features.properties";
     static final String REGION_PACKAGE_FILENAME = "regions.properties";
 
     static final Logger LOG = Logger.getLogger(ResolverHookImpl.class.getName());
@@ -64,9 +65,9 @@ class RegionEnforcer implements ResolverHookFactory {
     final Map<String, Set<String>> bundleFeatureMap;
     final Map<String, Set<String>> featureRegionMap;
     final Map<String, Set<String>> regionPackageMap;
-    final Set<String> enabledRegions;
+    final Set<String> defaultRegions;
 
-    RegionEnforcer(BundleContext context, Dictionary<String, Object> regProps, String regionsProp)
+    RegionEnforcer(BundleContext context, Dictionary<String, Object> regProps)
             throws IOException, URISyntaxException {
         URI idbsnverFile = getDataFileURI(context, IDBSNVER_FILENAME);
         // Register the location as a service property for diagnostic purposes
@@ -94,7 +95,21 @@ class RegionEnforcer implements ResolverHookFactory {
             regProps.put(APIREGIONS_JOINGLOBAL, toglobal);
         }
 
-        enabledRegions = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(regionsProp.split(","))));
+        String defRegProp = context.getProperty(DEFAULT_REGIONS);
+        if (defRegProp != null) {
+            Set<String> defRegs = new HashSet<>();
+            for (String region : Arrays.asList(defRegProp.split(","))) {
+                if (region.length() > 0) {
+                    defRegs.add(region);
+                }
+            }
+            defaultRegions = Collections.unmodifiableSet(defRegs);
+            if (defaultRegions.size() > 0) {
+                regProps.put(DEFAULT_REGIONS, defaultRegions.toString());
+            }
+        } else {
+            defaultRegions = Collections.emptySet();
+        }
 
         // Make all maps and their contents unmodifiable
         bsnVerMap = unmodifiableMapToList(bvm);
@@ -230,8 +245,6 @@ class RegionEnforcer implements ResolverHookFactory {
 
     @Override
     public ResolverHook begin(Collection<BundleRevision> triggers) {
-        if (enabledRegions.isEmpty())
-            return null;
-        return new ResolverHookImpl(bsnVerMap, bundleFeatureMap, featureRegionMap, regionPackageMap);
+        return new ResolverHookImpl(bsnVerMap, bundleFeatureMap, featureRegionMap, regionPackageMap, defaultRegions);
     }
 }

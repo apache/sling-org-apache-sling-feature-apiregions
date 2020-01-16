@@ -60,7 +60,7 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap);
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("*"));
 
         // b2 is in r2, it requires a capability that is provided by b1.
         // b1 is not in any region so it can provide access.
@@ -92,7 +92,7 @@ public class ResolverHookImplTest {
         rpmap.put("r1", Collections.singleton("org.apache.sling.test"));
         rpmap.put("r3", Collections.singleton("org.apache.sling.toast"));
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap);
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton(""));
 
         // b2 is in r2, it requires a capability that is provided by b1 in r1. However since b1 is also
         // in r2, r2 inherits all the capabilities provided by regions before r2, which includes r2. So
@@ -158,7 +158,7 @@ public class ResolverHookImplTest {
         rpmap.put(RegionEnforcer.GLOBAL_REGION, Collections.singleton("org.bar.tar"));
         rpmap.put("r3", Collections.singleton("xyz"));
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap);
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet());
 
         // Check that we can get the capability from another bundle in the same region
         // where that region exports the package
@@ -286,7 +286,7 @@ public class ResolverHookImplTest {
 
         ResolverHookImpl rh = new ResolverHookImpl(
                 Collections.<Map.Entry<String, Version>, List<String>>emptyMap(),
-                Collections.<String, Set<String>>emptyMap(), featureRegionMap, regionPackageMap);
+                Collections.<String, Set<String>>emptyMap(), featureRegionMap, regionPackageMap, Collections.emptySet());
 
         assertEquals(Collections.emptyList(), rh.getRegionsForPackage(null, "f1"));
         assertEquals(Collections.emptyList(), rh.getRegionsForPackage("org.foo", "f1"));
@@ -297,6 +297,52 @@ public class ResolverHookImplTest {
             rh.getRegionsForPackage("org.foo.bar", "f2"));
         assertEquals(Arrays.asList("r2", "r3"),
             rh.getRegionsForPackage("a.b.c", "f2"));
+    }
+
+    @Test
+    public void testDefaultRegions() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("b98", new Version(1, 0, 0)),
+                Collections.singletonList("b98"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("b99", new Version(1, 2, 3)),
+                Collections.singletonList("b99"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("b100", new Version(4, 5, 6)),
+                Collections.singletonList("b100"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b98", Collections.singleton("f2"));
+        bfmap.put("b100", Collections.singleton("f1"));
+
+        Map<String, Set<String>> frmap = new HashMap<>();
+        frmap.put("f1", Collections.singleton("r1"));
+        frmap.put("f2", Collections.singleton("r2"));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+        rpmap.put("r1", Collections.singleton("org.test"));
+        rpmap.put("r2", Collections.singleton("org.test"));
+
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap,
+                new HashSet<>(Arrays.asList("r1", "r3")));
+
+        // b99 is not in any region itself and tries to resolve to b100 which is in r1
+        // b99 can resolve to b100 because 'r1' is listed as a default region in the
+        // ResolverHook.
+        BundleRequirement req = mockRequirement("b99", bsnvermap);
+        BundleCapability cap = mockCapability("org.test", "b100", bsnvermap);
+        List<BundleCapability> candidates = new ArrayList<>(Arrays.asList(cap));
+        rh.filterMatches(req, candidates);
+        assertEquals("b99 should be able to wire to b100, as the default region is r1, which is what b100 is in. ",
+                Collections.singletonList(cap), candidates);
+
+        // b99 is not in any region and tries to resolve to b98, which is in r2
+        // b99 can't resolve because b2 is not in the default regions and it's not in
+        // any other regions itself.
+        BundleRequirement req1 = mockRequirement("b99", bsnvermap);
+        BundleCapability cap1 = mockCapability("org.test", "b98", bsnvermap);
+        List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1));
+        rh.filterMatches(req1, candidates1);
+        assertEquals("b99 should not be able to wire to b98, as this is in region r2, which is not in the default regions r1 and r3",
+                0, candidates1.size());
     }
 
     private BundleCapability mockCapability(String pkgName, String bid, Map<Entry<String, Version>, List<String>> bsnvermap) {
