@@ -34,7 +34,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -69,47 +68,6 @@ public class ResolverHookImplTest {
         List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1));
         rh.filterMatches(req1, candidates1);
         assertEquals(Collections.singletonList(cap1), candidates1);
-    }
-
-    @Test
-    public void testRegionInheritance() {
-        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle", new Version(9,9,9)), Collections.singletonList("b1"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "requiring.bundle", new Version(123,456,789)), Collections.singletonList("b2"));
-
-        Map<String, Set<String>> bfmap = new HashMap<>();
-        bfmap.put("b1", Collections.singleton("f1"));
-        bfmap.put("b2", Collections.singleton("f2"));
-
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f1", new LinkedHashSet<>(Arrays.asList("r0", "r1", "r2", "r3")));
-        frmap.put("f2", Collections.singleton("r2"));
-
-        Map<String, Set<String>> rpmap = new HashMap<>();
-        rpmap.put("r0", Collections.<String>emptySet());
-        rpmap.put("r1", Collections.singleton("org.apache.sling.test"));
-        rpmap.put("r3", Collections.singleton("org.apache.sling.toast"));
-
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton(""));
-
-        // b2 is in r2, it requires a capability that is provided by b1 in r1. However since b1 is also
-        // in r2, r2 inherits all the capabilities provided by regions before r2, which includes r2. So
-        // b2, which is in r2 should resolve.
-        BundleRequirement req1 = mockRequirement("b2", bsnvermap);
-        BundleCapability cap1 = mockCapability("org.apache.sling.test", "b1", bsnvermap);
-        List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1));
-        rh.filterMatches(req1, candidates1);
-        assertEquals(Collections.singletonList(cap1), candidates1);
-
-        // b2 is in r2, it requires a capability that is provided by b1 in r3. r3 is listed after r2 in
-        // b1 so it is not inherited by r2. The requirement should not resolve.
-        BundleRequirement req2 = mockRequirement("b2", bsnvermap);
-        BundleCapability cap2 = mockCapability("org.apache.sling.toast", "b1", bsnvermap);
-        List<BundleCapability> candidates2 = new ArrayList<>(Arrays.asList(cap2));
-        rh.filterMatches(req2, candidates2);
-        assertEquals(Collections.emptyList(), candidates2);
     }
 
     @Test

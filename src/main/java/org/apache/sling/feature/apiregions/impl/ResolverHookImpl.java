@@ -161,23 +161,6 @@ class ResolverHookImpl implements ResolverHook {
                 List<String> sharedRegions = new ArrayList<>(reqRegions);
                 sharedRegions.retainAll(capRegions);
 
-                // Add any regions before the sharedRegions back in, as later regions inherit from earlier ones
-                List<String> capRegionList = new ArrayList<>(capRegions);
-                for (String region : new ArrayList<>(sharedRegions)) {
-                    boolean foundRegion = false;
-                    for (int i = capRegionList.size() - 1; i >= 0; i--) {
-                        String capRegion = capRegionList.get(i);
-                        if (region.equals(capRegion)) {
-                            foundRegion = true;
-                            continue;
-                        }
-                        if (foundRegion) {
-                            // Add the found region to the front of the list of shared regions
-                            sharedRegions.add(0, capRegion);
-                        }
-                    }
-                }
-
                 Object pkg = bc.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE);
                 if (pkg instanceof String) {
                     packageName = (String) pkg;
