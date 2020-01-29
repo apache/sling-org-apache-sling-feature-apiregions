@@ -33,6 +33,13 @@ The component is enabled by setting the following framework property:
 
 If this framework property is not set the component will be disabled.
 
+## Additional Configuration
+
+The following framework properties are also recognised:
+
+* `sling.feature.apiregions.default` - a comma-separated list of region names. Each bundle installed will be added to these regions, regardless of whether it's installed in a feature or not.
+* `sling.feature.apiregions.joinglobal` - a comma-separated list of region names. All packages exported by these regions are added to the `global` region.
+
 ### Runtime Configuration
 If this component runs in a framework with Configuration Admin present, and it is set to be enabled using the framework property, it can be disabled at runtime
 through Configuration Admin configuration.
