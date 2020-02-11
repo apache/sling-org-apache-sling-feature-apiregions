@@ -62,12 +62,253 @@ public class ResolverHookImplTest {
         ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("*"));
 
         // b2 is in r2, it requires a capability that is provided by b1.
-        // b1 is not in any region so it can provide access.
+        // b1 is in a feature, but that feature is not in any region so it can provide access.
         BundleRequirement req1 = mockRequirement("b2", bsnvermap);
         BundleCapability cap1 = mockCapability("org.apache.sling.test", "b1", bsnvermap);
         List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1));
         rh.filterMatches(req1, candidates1);
         assertEquals(Collections.singletonList(cap1), candidates1);
+    }
+
+    @Test
+    public void testProvidingBundleHasNoFeatureSoEveryoneCanAccess() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle", new Version(1,0,0)), Collections.singletonList("b1"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b2", Collections.singleton("f2"));
+
+        Map<String, Set<String>> frmap = new HashMap<>();
+        frmap.put("f2", Collections.singleton("r2"));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+
+        // b2 is in r2, it requires a capability that is provided by b1.
+        // b1 is not in any feature so it can provide access.
+        BundleRequirement req1 = mockRequirement("b2", bsnvermap);
+        BundleCapability cap1 = mockCapability("org.apache.sling.test", "b1", bsnvermap);
+        List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1));
+        rh.filterMatches(req1, candidates1);
+        assertEquals(Collections.singletonList(cap1), candidates1);
+    }
+
+    @Test
+    public void testProvidingFeatureHasNoRegionsSoEveryoneCanAccess3() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle", new Version(1,0,0)), Collections.singletonList("b1"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b1", Collections.singleton("f1"));
+        bfmap.put("b2", Collections.singleton("f2"));
+
+        Map<String, Set<String>> frmap = new HashMap<>();
+        frmap.put("f1", Collections.emptySet());
+        frmap.put("f2", Collections.singleton("r2"));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+
+        // b2 is in r2, it requires a capability that is provided by b1.
+        // b1 is in a feature that has an empty region set, any region so it can provide access.
+        BundleRequirement req1 = mockRequirement("b2", bsnvermap);
+        BundleCapability cap1 = mockCapability("org.apache.sling.test", "b1", bsnvermap);
+        List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1));
+        rh.filterMatches(req1, candidates1);
+        assertEquals(Collections.singletonList(cap1), candidates1);
+    }
+
+    @Test
+    public void testProvidingFeatureHasNoExportsSoOtherFeatureCannotAccess() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle", new Version(1,0,0)), Collections.singletonList("b1"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b1", Collections.singleton("f1"));
+        bfmap.put("b2", Collections.singleton("f2"));
+
+        Map<String, Set<String>> frmap = new HashMap<>();
+        frmap.put("f1", Collections.singleton("r2"));
+        frmap.put("f2", Collections.singleton("r2"));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+
+        // b2 is in r2, it requires a capability that is provided by b1.
+        // b1 is also in r2 but is not exporting the package in there, so b2 should not see the package.
+        BundleRequirement req1 = mockRequirement("b2", bsnvermap);
+        BundleCapability cap1 = mockCapability("org.apache.sling.test", "b1", bsnvermap);
+        List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1));
+        rh.filterMatches(req1, candidates1);
+        assertEquals("The exported package is not exported in any region, and b1 is in r2 so b2 should not see the package as its feature-private",
+                0, candidates1.size());
+    }
+
+    @Test
+    public void testRegionHasPrecedenceOverGlobal() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.otherfeature", new Version(1,0,0)), Collections.singletonList("b10"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.infeature", new Version(1,0,0)), Collections.singletonList("b11"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.inglobal", new Version(1,0,0)), Collections.singletonList("b19"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b10", Collections.singleton("f10"));
+        bfmap.put("b11", Collections.singleton("f11"));
+        bfmap.put("b2", Collections.singleton("f2"));
+
+        Map<String, Set<String>> frmap = new HashMap<>();
+        frmap.put("f10", new HashSet<>(Arrays.asList("r2", "r3")));
+        frmap.put("f11", new HashSet<>(Arrays.asList("r1", "r2")));
+        frmap.put("f2", Collections.singleton("r1"));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+        rpmap.put("r1", Collections.singleton("org.foo.bar"));
+        rpmap.put("r2", new HashSet<>(Arrays.asList("xxx", "yyy", "zzz")));
+        rpmap.put("r3", new HashSet<>(Arrays.asList("org.foo.bar", "zzz")));
+
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+
+        // b2 needs to resolve to 'org.foo.bar' package. b2 is in region r1.
+        // The package is provided by 3 bundles:
+        //   b10 provides it but is not in a matching region
+        //   b11 provides it and has a matching region
+        //   b19 provides it in the global region
+        // Only b11 should provide the capability. Even though b19 provides it from the global region, if there is an overlapping
+        // specific region then the global region should not be used
+        BundleRequirement req1 = mockRequirement("b2", bsnvermap);
+        BundleCapability cap1 = mockCapability("org.foo.bar", "b10", bsnvermap);
+        BundleCapability cap2 = mockCapability("org.foo.bar", "b11", bsnvermap);
+        BundleCapability cap3 = mockCapability("org.foo.bar", "b19", bsnvermap);
+        List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1, cap2, cap3));
+        rh.filterMatches(req1, candidates1);
+
+        assertEquals("Only the capability coming from bundle b11 should be selected, b10 is in a different region and b19 is in global "
+                + "which should be excluded as there is a capability in a matching region.",
+                Collections.singletonList(cap2), candidates1);
+    }
+
+    @Test
+    public void testOwnFeatureHasPrecendenceOverGlobal() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.infeature", new Version(1,0,0)), Collections.singletonList("b11"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.inglobal", new Version(1,0,0)), Collections.singletonList("b19"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b11", Collections.singleton("f1"));
+        bfmap.put("b2", Collections.singleton("f1"));
+
+        Map<String, Set<String>> frmap = new HashMap<>();
+        frmap.put("f1", Collections.singleton("r1"));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+        rpmap.put("r1", Collections.emptySet());
+
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+
+        // b2 needs to resolve 'org.foo.bar' and there are 2 candidates:
+        // b11 is in the same feature as b2
+        // b19 is in the no feature
+        // In this case b11 should be selected as its in the same region
+        BundleRequirement req1 = mockRequirement("b2", bsnvermap);
+        BundleCapability cap1 = mockCapability("org.foo.bar", "b11", bsnvermap);
+        BundleCapability cap2 = mockCapability("org.foo.bar", "b19", bsnvermap);
+        List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1, cap2));
+        rh.filterMatches(req1, candidates1);
+
+        assertEquals("Only b11 should be selected as its from the same region as b2",
+                Collections.singletonList(cap1), candidates1);
+    }
+
+    @Test
+    public void testMultipleGlobalOptionsOnly() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.otherfeature", new Version(1,0,0)), Collections.singletonList("b10"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.inglobal1", new Version(1,0,0)), Collections.singletonList("b18"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.inglobal2", new Version(1,0,0)), Collections.singletonList("b19"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b10", Collections.singleton("f10"));
+        bfmap.put("b2", Collections.singleton("f2"));
+
+        Map<String, Set<String>> frmap = new HashMap<>();
+        frmap.put("f10", new HashSet<>(Arrays.asList("r2", "r3")));
+        frmap.put("f2", Collections.singleton("r1"));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+        rpmap.put("r1", Collections.emptySet());
+        rpmap.put("r2", new HashSet<>(Arrays.asList("xxx", "yyy", "zzz")));
+        rpmap.put("r3", new HashSet<>(Arrays.asList("org.foo.bar", "zzz")));
+
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+
+        // b2 needs to resolve to 'org.foo.bar' package. b2 is in region r1.
+        // However nobody in r1 exports the package
+        // The package is exported by b10 in r3 but b2 is not in that region.
+        // The package is exported by b18 and b19 which are both in the global region
+        // Both these candidates should remain available.
+        BundleRequirement req1 = mockRequirement("b2", bsnvermap);
+        BundleCapability cap1 = mockCapability("org.foo.bar", "b10", bsnvermap);
+        BundleCapability cap2 = mockCapability("org.foo.bar", "b18", bsnvermap);
+        BundleCapability cap3 = mockCapability("org.foo.bar", "b19", bsnvermap);
+        List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1, cap2, cap3));
+        rh.filterMatches(req1, candidates1);
+
+        assertEquals("Since there are no specific candidates in a matching region, the candidates from "
+                + "the global region should be allowed.",
+                Arrays.asList(cap2, cap3), candidates1);
+    }
+
+    @Test
+    public void testMultipleGlobalOptionsOnly2() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.inglobal1", new Version(1,0,0)), Collections.singletonList("b18"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.inglobal2", new Version(1,0,0)), Collections.singletonList("b19"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        Map<String, Set<String>> frmap = new HashMap<>();
+        Map<String, Set<String>> rpmap = new HashMap<>();
+
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+
+        // b2 needs to resolve to 'org.foo.bar' package. b2 is in no region.
+        // b18 and b19 export the package in the global region. They should both be allowed.
+        BundleRequirement req1 = mockRequirement("b2", bsnvermap);
+        BundleCapability cap1 = mockCapability("org.foo.bar", "b18", bsnvermap);
+        BundleCapability cap2 = mockCapability("org.foo.bar", "b19", bsnvermap);
+        List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1, cap2));
+        rh.filterMatches(req1, candidates1);
+
+        assertEquals(Arrays.asList(cap1, cap2), candidates1);
     }
 
     @Test
