@@ -283,19 +283,13 @@ class ResolverHookImpl implements ResolverHook {
             return Collections.emptyList();
 
         List<String> res = new ArrayList<>();
-        boolean found = false;
         for (String region : regions) {
             Set<String> packages = regionPackageMap.get(region);
             if (packages == null)
                 continue;
 
-            if (found) {
-                // Since later regions inherit from earlier ones, if the package has been found before
-                // it also applies to this region.
+            if (packages.contains(packageName)) {
                 res.add(region);
-            } else if (packages.contains(packageName)) {
-                res.add(region);
-                found = true;
             }
         }
         return res;

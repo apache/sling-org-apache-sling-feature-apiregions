@@ -472,6 +472,38 @@ public class ResolverHookImplTest {
     }
 
     @Test
+    public void testMultipleRegionsNoneMatching() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("bundle.1", new Version(1,0,0)),
+                Collections.singletonList("b1"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("bundle.2", new Version(1,0,0)),
+                Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b1", Collections.singleton("f1"));
+        bfmap.put("b2", Collections.singleton("f2"));
+
+        Map<String, Set<String>> frmap = new HashMap<>();
+        frmap.put("f1", new HashSet<>(Arrays.asList(
+                RegionEnforcer.GLOBAL_REGION, "org.foo.blah")));
+        frmap.put("f2", new HashSet<>(Arrays.asList("org.foo.bar",
+                RegionEnforcer.GLOBAL_REGION, "org.foo.blah")));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+        rpmap.put("org.foo.bar", Collections.singleton("org.test"));
+        rpmap.put(RegionEnforcer.GLOBAL_REGION, Collections.singleton("org.something"));
+        rpmap.put("org.foo.blah", Collections.singleton("org.something"));
+
+        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet());
+
+        BundleRequirement req0 = mockRequirement("b1", bsnvermap);
+        BundleCapability cap0 = mockCapability("org.test", "b2", bsnvermap);
+        List<BundleCapability> candidates0 = new ArrayList<>(Arrays.asList(cap0));
+        rh.filterMatches(req0, candidates0);
+        assertEquals(Collections.emptyList(), candidates0);
+    }
+
+    @Test
     public void testGetRegionsForPackage() {
         Set<String> regions = new HashSet<>(Arrays.asList("r1", "r2", "r3"));
         Map<String, Set<String>> featureRegionMap = Collections.singletonMap("f2", regions);
@@ -492,10 +524,8 @@ public class ResolverHookImplTest {
         assertEquals(Collections.emptyList(), rh.getRegionsForPackage(null, "f2"));
         assertEquals(Collections.emptyList(), rh.getRegionsForPackage("org.foo", "f2"));
 
-        assertEquals(Collections.singletonList("r3"),
-            rh.getRegionsForPackage("org.foo.bar", "f2"));
-        assertEquals(Arrays.asList("r2", "r3"),
-            rh.getRegionsForPackage("a.b.c", "f2"));
+        assertEquals(Collections.singletonList("r3"), rh.getRegionsForPackage("org.foo.bar", "f2"));
+        assertEquals(Collections.singletonList("r2"), rh.getRegionsForPackage("a.b.c", "f2"));
     }
 
     @Test
