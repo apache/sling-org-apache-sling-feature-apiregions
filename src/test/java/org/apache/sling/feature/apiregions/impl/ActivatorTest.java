@@ -18,6 +18,24 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
+import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.BUNDLE_FEATURE_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.FEATURE_REGION_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.IDBSNVER_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.PROPERTIES_RESOURCE_PREFIX;
+import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.REGION_PACKAGE_FILENAME;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Dictionary;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Properties;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,24 +54,6 @@ import org.osgi.framework.wiring.BundleWiring;
 import org.osgi.framework.wiring.FrameworkWiring;
 import org.osgi.resource.Requirement;
 import org.osgi.service.cm.ManagedService;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Dictionary;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Properties;
-
-import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.BUNDLE_FEATURE_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.FEATURE_REGION_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.IDBSNVER_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.PROPERTIES_RESOURCE_PREFIX;
-import static org.apache.sling.feature.apiregions.impl.RegionEnforcer.REGION_PACKAGE_FILENAME;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 
 public class ActivatorTest {
     private Properties savedProps;
@@ -185,7 +185,7 @@ public class ActivatorTest {
         BundleContext bc = Mockito.mock(BundleContext.class);
         Mockito.when(bc.getBundle()).thenReturn(fw);
         Mockito.when(bc.getProperty(Activator.REGIONS_PROPERTY_NAME)).thenReturn("*");
-        Mockito.when(bc.getProperty(RegionEnforcer.PROPERTIES_FILE_LOCATION)).thenReturn(resourceDir);
+        Mockito.when(bc.getProperty(RegionConfiguration.PROPERTIES_FILE_LOCATION)).thenReturn(resourceDir);
         Mockito.when(bc.registerService(
             Mockito.eq("org.osgi.service.cm.ManagedService"),
             Mockito.any(),

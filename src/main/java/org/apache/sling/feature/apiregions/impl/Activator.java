@@ -18,6 +18,17 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Dictionary;
+import java.util.Hashtable;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
@@ -31,20 +42,12 @@ import org.osgi.framework.wiring.FrameworkWiring;
 import org.osgi.resource.Requirement;
 import org.osgi.resource.Resource;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Dictionary;
-import java.util.Hashtable;
-import java.util.Map;
-import java.util.logging.Level;
-
 public class Activator implements BundleActivator, FrameworkListener {
     static final String MANAGED_SERVICE_PKG_NAME = "org.osgi.service.cm";
     static final String MANAGED_SERVICE_CLASS_NAME = MANAGED_SERVICE_PKG_NAME + ".ManagedService";
     static final String REGIONS_PROPERTY_NAME = "org.apache.sling.feature.apiregions.regions";
+
+    static final Logger LOG = Logger.getLogger(ResolverHookImpl.class.getName());
 
     BundleContext bundleContext;
     ServiceRegistration<ResolverHookFactory> hookRegistration;
@@ -68,16 +71,17 @@ public class Activator implements BundleActivator, FrameworkListener {
             return; // There is already a hook, no need to re-register
 
         if (bundleContext.getProperty(REGIONS_PROPERTY_NAME) == null) {
-            RegionEnforcer.LOG.log(Level.WARNING, "API Regions not enabled. To enable set framework property: " + REGIONS_PROPERTY_NAME);
+            LOG.log(Level.WARNING, "API Regions not enabled. To enable set framework property: " + REGIONS_PROPERTY_NAME);
             return; // Component not enabled
         }
 
         Dictionary<String, Object> props = new Hashtable<>();
         try {
-            RegionEnforcer enforcer = new RegionEnforcer(bundleContext, props);
+            final RegionConfiguration cfg = new RegionConfiguration(bundleContext, props);
+            RegionEnforcer enforcer = new RegionEnforcer(cfg);
             hookRegistration = bundleContext.registerService(ResolverHookFactory.class, enforcer, props);
         } catch (Exception e) {
-            RegionEnforcer.LOG.log(Level.SEVERE, "Problem activating API Regions runtime enforcement component", e);
+            LOG.log(Level.SEVERE, "Problem activating API Regions runtime enforcement component", e);
         }
     }
 
@@ -95,7 +99,7 @@ public class Activator implements BundleActivator, FrameworkListener {
 
             FrameworkWiring fw = bundleContext.getBundle().adapt(FrameworkWiring.class);
             if (fw == null) {
-                RegionEnforcer.LOG.log(Level.WARNING, "The API Regions runtime fragment is not attached to the system bundle.");
+                LOG.log(Level.WARNING, "The API Regions runtime fragment is not attached to the system bundle.");
                 return;
             }
 
@@ -150,10 +154,10 @@ public class Activator implements BundleActivator, FrameworkListener {
 
                     return; // ManagedService registration successful. Exit method.
                 } catch (Exception e) {
-                    RegionEnforcer.LOG.log(Level.WARNING, "Problem attempting to register ManagedService from " + cap, e);
+                    LOG.log(Level.WARNING, "Problem attempting to register ManagedService from " + cap, e);
                 }
             }
-            RegionEnforcer.LOG.log(Level.INFO, "No Configuration Admin API available");
+            LOG.log(Level.INFO, "No Configuration Admin API available");
         }
     }
 

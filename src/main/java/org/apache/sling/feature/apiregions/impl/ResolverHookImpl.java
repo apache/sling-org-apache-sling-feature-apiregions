@@ -18,14 +18,6 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
-import org.osgi.framework.Bundle;
-import org.osgi.framework.Version;
-import org.osgi.framework.hooks.resolver.ResolverHook;
-import org.osgi.framework.namespace.PackageNamespace;
-import org.osgi.framework.wiring.BundleCapability;
-import org.osgi.framework.wiring.BundleRequirement;
-import org.osgi.framework.wiring.BundleRevision;
-
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,24 +27,23 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.logging.Level;
 
-class ResolverHookImpl implements ResolverHook {
-    final Map<Map.Entry<String, Version>, List<String>> bsnVerMap;
-    final Map<String, Set<String>> bundleFeatureMap;
-    final Map<String, Set<String>> featureRegionMap;
-    final Map<String, Set<String>> regionPackageMap;
-    final Set<String> defaultRegions;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.Version;
+import org.osgi.framework.hooks.resolver.ResolverHook;
+import org.osgi.framework.namespace.PackageNamespace;
+import org.osgi.framework.wiring.BundleCapability;
+import org.osgi.framework.wiring.BundleRequirement;
+import org.osgi.framework.wiring.BundleRevision;
 
-    ResolverHookImpl(Map<Entry<String, Version>, List<String>> bsnVerMap, Map<String, Set<String>> bundleFeatureMap,
-            Map<String, Set<String>> featureRegionMap, Map<String, Set<String>> regionPackageMap, Set<String> defaultRegions) {
-        this.bsnVerMap = bsnVerMap;
-        this.bundleFeatureMap = bundleFeatureMap;
-        this.featureRegionMap = featureRegionMap;
-        this.regionPackageMap = regionPackageMap;
-        this.defaultRegions = defaultRegions;
+class ResolverHookImpl implements ResolverHook {
+
+    final RegionConfiguration configuration;
+
+    ResolverHookImpl(RegionConfiguration cfg) {
+        this.configuration = cfg;
     }
 
     @Override
@@ -76,18 +67,18 @@ class ResolverHookImpl implements ResolverHook {
         String reqBundleName = reqBundle.getSymbolicName();
         Version reqBundleVersion = reqBundle.getVersion();
 
-        Set<String> reqRegions = new HashSet<>(defaultRegions);
+        Set<String> reqRegions = new HashSet<>(this.configuration.getDefaultRegions());
         List<String> reqFeatures = new ArrayList<>();
-        List<String> aids = bsnVerMap.get(new AbstractMap.SimpleEntry<String, Version>(reqBundleName, reqBundleVersion));
+        List<String> aids = this.configuration.getBsnVerMap().get(new AbstractMap.SimpleEntry<String, Version>(reqBundleName, reqBundleVersion));
         if (aids != null) {
             for (String aid : aids) {
-                Set<String> fid = bundleFeatureMap.get(aid);
+                Set<String> fid = this.configuration.getBundleFeatureMap().get(aid);
                 if (fid != null)
                     reqFeatures.addAll(fid);
             }
 
             for (String feature : reqFeatures) {
-                Set<String> fr = featureRegionMap.get(feature);
+                Set<String> fr = this.configuration.getFeatureRegionMap().get(feature);
                 if (fr != null) {
                     reqRegions.addAll(fr);
                 }
@@ -121,16 +112,16 @@ class ResolverHookImpl implements ResolverHook {
             String capBundleName = capBundle.getSymbolicName();
             Version capBundleVersion = capBundle.getVersion();
 
-            List<String> capBundleArtifacts = bsnVerMap.get(new AbstractMap.SimpleEntry<String, Version>(capBundleName, capBundleVersion));
+            List<String> capBundleArtifacts = this.configuration.getBsnVerMap().get(new AbstractMap.SimpleEntry<String, Version>(capBundleName, capBundleVersion));
             if (capBundleArtifacts == null) {
                 // Capability is not in any feature, everyone can access
-                coveredCaps.put(bc, RegionEnforcer.GLOBAL_REGION);
+                coveredCaps.put(bc, RegionConfiguration.GLOBAL_REGION);
                 continue nextCapability;
             }
 
             List<String> capFeatures = new ArrayList<>();
             for (String ba : capBundleArtifacts) {
-                Set<String> capfeats = bundleFeatureMap.get(ba);
+                Set<String> capfeats = this.configuration.getBundleFeatureMap().get(ba);
                 if (capfeats != null)
                     capFeatures.addAll(capfeats);
             }
@@ -141,7 +132,7 @@ class ResolverHookImpl implements ResolverHook {
             for (String capFeat : capFeatures) {
                 if (capFeat == null) {
                     // everyone can access capability not coming from a feature
-                    coveredCaps.put(bc, RegionEnforcer.GLOBAL_REGION);
+                    coveredCaps.put(bc, RegionConfiguration.GLOBAL_REGION);
                     continue nextCapability;
                 }
 
@@ -151,10 +142,10 @@ class ResolverHookImpl implements ResolverHook {
                     continue nextCapability;
                 }
 
-                Set<String> capRegions = featureRegionMap.get(capFeat);
+                Set<String> capRegions = this.configuration.getFeatureRegionMap().get(capFeat);
                 if (capRegions == null || capRegions.size() == 0) {
                     // If the feature hosting the capability has no regions defined, everyone can access
-                    coveredCaps.put(bc, RegionEnforcer.GLOBAL_REGION);
+                    coveredCaps.put(bc, RegionConfiguration.GLOBAL_REGION);
                     continue nextCapability;
                 }
                 bcFeatureMap.put(bc, capFeat);
@@ -168,7 +159,7 @@ class ResolverHookImpl implements ResolverHook {
 
                     // Look at specific regions first as they take precedence over the global region
                     for (String region : sharedRegions) {
-                        Set<String> regionPackages = regionPackageMap.get(region);
+                        Set<String> regionPackages = this.configuration.getRegionPackageMap().get(region);
                         if (regionPackages != null && regionPackages.contains(packageName)) {
                             // If the export is in a region that the feature is also in, then allow
                             coveredCaps.put(bc, region);
@@ -177,10 +168,10 @@ class ResolverHookImpl implements ResolverHook {
                     }
 
                     // Now check the global region
-                    Set<String> globalPackages = regionPackageMap.get(RegionEnforcer.GLOBAL_REGION);
+                    Set<String> globalPackages = this.configuration.getRegionPackageMap().get(RegionConfiguration.GLOBAL_REGION);
                     if (globalPackages != null && globalPackages.contains(packageName)) {
                         // If the export is in the global region everyone can access
-                        coveredCaps.put(bc, RegionEnforcer.GLOBAL_REGION);
+                        coveredCaps.put(bc, RegionConfiguration.GLOBAL_REGION);
                         continue nextCapability;
                     }
                 }
@@ -213,7 +204,7 @@ class ResolverHookImpl implements ResolverHook {
                 sb.append("]");
             }
 
-            RegionEnforcer.LOG.log(Level.WARNING,
+            Activator.LOG.log(Level.WARNING,
                     "API-Regions removed candidates {0} for requirement {1} as the requirement is in the following regions: {2} and in feature: {3}",
                     new Object[] {sb, requirement, reqRegions, reqFeatures});
         }
@@ -229,7 +220,7 @@ class ResolverHookImpl implements ResolverHook {
      */
     private void pruneCoveredCaps(Set<String> reqRegions, Map<BundleCapability,String> capMap) {
         Set<String> reqNonGlobalRegions = new HashSet<>(reqRegions);
-        reqNonGlobalRegions.remove(RegionEnforcer.GLOBAL_REGION);
+        reqNonGlobalRegions.remove(RegionConfiguration.GLOBAL_REGION);
 
         if (capMap.size() <= 1) {
             // Shortcut: there is only 0 or 1 capability, nothing to do
@@ -237,7 +228,7 @@ class ResolverHookImpl implements ResolverHook {
         }
 
         if (reqRegions.size() == 0
-                || Collections.singleton(RegionEnforcer.GLOBAL_REGION).equals(reqRegions)) {
+                || Collections.singleton(RegionConfiguration.GLOBAL_REGION).equals(reqRegions)) {
             // No regions (other than global) for the requirement: do nothing
             return;
         }
@@ -278,13 +269,13 @@ class ResolverHookImpl implements ResolverHook {
         if (packageName == null)
             return Collections.emptyList();
 
-        Set<String> regions = featureRegionMap.get(feature);
+        Set<String> regions = this.configuration.getFeatureRegionMap().get(feature);
         if (regions == null)
             return Collections.emptyList();
 
         List<String> res = new ArrayList<>();
         for (String region : regions) {
-            Set<String> packages = regionPackageMap.get(region);
+            Set<String> packages = this.configuration.getRegionPackageMap().get(region);
             if (packages == null)
                 continue;
 

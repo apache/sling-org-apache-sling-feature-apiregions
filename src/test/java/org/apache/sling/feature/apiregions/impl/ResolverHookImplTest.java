@@ -18,14 +18,7 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.Version;
-import org.osgi.framework.namespace.PackageNamespace;
-import org.osgi.framework.wiring.BundleCapability;
-import org.osgi.framework.wiring.BundleRequirement;
-import org.osgi.framework.wiring.BundleRevision;
+import static org.junit.Assert.assertEquals;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -39,7 +32,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.Version;
+import org.osgi.framework.namespace.PackageNamespace;
+import org.osgi.framework.wiring.BundleCapability;
+import org.osgi.framework.wiring.BundleRequirement;
+import org.osgi.framework.wiring.BundleRevision;
 
 public class ResolverHookImplTest {
     @Test
@@ -59,7 +59,7 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("*"));
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("*")));
 
         // b2 is in r2, it requires a capability that is provided by b1.
         // b1 is in a feature, but that feature is not in any region so it can provide access.
@@ -86,7 +86,7 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 is in r2, it requires a capability that is provided by b1.
         // b1 is not in any feature so it can provide access.
@@ -115,7 +115,7 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 is in r2, it requires a capability that is provided by b1.
         // b1 is in a feature that has an empty region set, any region so it can provide access.
@@ -144,7 +144,7 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 is in r2, it requires a capability that is provided by b1.
         // b1 is also in r2 but is not exporting the package in there, so b2 should not see the package.
@@ -183,7 +183,7 @@ public class ResolverHookImplTest {
         rpmap.put("r2", new HashSet<>(Arrays.asList("xxx", "yyy", "zzz")));
         rpmap.put("r3", new HashSet<>(Arrays.asList("org.foo.bar", "zzz")));
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 needs to resolve to 'org.foo.bar' package. b2 is in region r1.
         // The package is provided by 3 bundles:
@@ -224,7 +224,7 @@ public class ResolverHookImplTest {
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("r1", Collections.emptySet());
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 needs to resolve 'org.foo.bar' and there are 2 candidates:
         // b11 is in the same feature as b2
@@ -265,7 +265,7 @@ public class ResolverHookImplTest {
         rpmap.put("r2", new HashSet<>(Arrays.asList("xxx", "yyy", "zzz")));
         rpmap.put("r3", new HashSet<>(Arrays.asList("org.foo.bar", "zzz")));
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 needs to resolve to 'org.foo.bar' package. b2 is in region r1.
         // However nobody in r1 exports the package
@@ -298,7 +298,7 @@ public class ResolverHookImplTest {
         Map<String, Set<String>> frmap = new HashMap<>();
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global"));
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 needs to resolve to 'org.foo.bar' package. b2 is in no region.
         // b18 and b19 export the package in the global region. They should both be allowed.
@@ -345,7 +345,7 @@ public class ResolverHookImplTest {
         bfmap.put("b20", Collections.singleton("f4"));
 
         Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f", new HashSet<>(Arrays.asList("r1", "r2", RegionEnforcer.GLOBAL_REGION)));
+        frmap.put("f", new HashSet<>(Arrays.asList("r1", "r2", RegionConfiguration.GLOBAL_REGION)));
         frmap.put("f1", Collections.singleton("r1"));
         frmap.put("f2", Collections.singleton("r2"));
         frmap.put("f3", Collections.singleton("r3"));
@@ -354,10 +354,10 @@ public class ResolverHookImplTest {
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("r0", Collections.singleton("org.bar"));
         rpmap.put("r1", new HashSet<>(Arrays.asList("org.blah", "org.foo")));
-        rpmap.put(RegionEnforcer.GLOBAL_REGION, Collections.singleton("org.bar.tar"));
+        rpmap.put(RegionConfiguration.GLOBAL_REGION, Collections.singleton("org.bar.tar"));
         rpmap.put("r3", Collections.singleton("xyz"));
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet());
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet()));
 
         // Check that we can get the capability from another bundle in the same region
         // where that region exports the package
@@ -485,16 +485,16 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> frmap = new HashMap<>();
         frmap.put("f1", new HashSet<>(Arrays.asList(
-                RegionEnforcer.GLOBAL_REGION, "org.foo.blah")));
+                RegionConfiguration.GLOBAL_REGION, "org.foo.blah")));
         frmap.put("f2", new HashSet<>(Arrays.asList("org.foo.bar",
-                RegionEnforcer.GLOBAL_REGION, "org.foo.blah")));
+                RegionConfiguration.GLOBAL_REGION, "org.foo.blah")));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("org.foo.bar", Collections.singleton("org.test"));
-        rpmap.put(RegionEnforcer.GLOBAL_REGION, Collections.singleton("org.something"));
+        rpmap.put(RegionConfiguration.GLOBAL_REGION, Collections.singleton("org.something"));
         rpmap.put("org.foo.blah", Collections.singleton("org.something"));
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet());
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet()));
 
         BundleRequirement req0 = mockRequirement("b1", bsnvermap);
         BundleCapability cap0 = mockCapability("org.test", "b2", bsnvermap);
@@ -516,8 +516,8 @@ public class ResolverHookImplTest {
         regionPackageMap.put("r3", pkgs);
 
         ResolverHookImpl rh = new ResolverHookImpl(
-                Collections.<Map.Entry<String, Version>, List<String>>emptyMap(),
-                Collections.<String, Set<String>>emptyMap(), featureRegionMap, regionPackageMap, Collections.emptySet());
+                new RegionConfiguration(Collections.<Map.Entry<String, Version>, List<String>>emptyMap(),
+                Collections.<String, Set<String>>emptyMap(), featureRegionMap, regionPackageMap, Collections.emptySet()));
 
         assertEquals(Collections.emptyList(), rh.getRegionsForPackage(null, "f1"));
         assertEquals(Collections.emptyList(), rh.getRegionsForPackage("org.foo", "f1"));
@@ -550,8 +550,8 @@ public class ResolverHookImplTest {
         rpmap.put("r1", Collections.singleton("org.test"));
         rpmap.put("r2", Collections.singleton("org.test"));
 
-        ResolverHookImpl rh = new ResolverHookImpl(bsnvermap, bfmap, frmap, rpmap,
-                new HashSet<>(Arrays.asList("r1", "r3")));
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap,
+                new HashSet<>(Arrays.asList("r1", "r3"))));
 
         // b99 is not in any region itself and tries to resolve to b100 which is in r1
         // b99 can resolve to b100 because 'r1' is listed as a default region in the
