@@ -40,7 +40,7 @@ The following framework properties are also recognised:
 * `sling.feature.apiregions.default` - a comma-separated list of region names. Each bundle installed will be added to these regions, regardless of whether it's installed in a feature or not.
 * `sling.feature.apiregions.joinglobal` - a comma-separated list of region names. All packages exported by these regions are added to the `global` region.
 
-### Runtime Configuration
+## Runtime Configuration
 If this component runs in a framework with Configuration Admin present, and it is set to be enabled using the framework property, it can be disabled at runtime
 through Configuration Admin configuration.
 
@@ -56,3 +56,10 @@ No meta type is defined for this configuration since it's not a typical user set
 the configuration can be created using `curl`: 
 
     curl -u <user>:<pass> -X POST -d "apply=true" -d "propertylist=disable" -d "disable=true" http://localhost:8080/system/console/configMgr/org.apache.sling.feature.apiregions.impl
+
+## Configuration Files
+
+* `idbsnver.properties` contains a mapping from Maven artifact ID to BSN+Version in the following format: `groupid:artifactId:version=bsn~1.0.0`
+* `bundles.properties` lists what feature a bundle (by Maven ID) is defined in, could be more than one feature, so the value is comma-separated e.g.: `org.sling:mybundles:1=some.other:feature:123,org.sling:something:1.2.3:slingosgifeature:myclassifier`
+* `features.properties` lists for a feature ID what regions this feature is in, also comma separated, e.g: `org.sling:myfeature:1.2.3=internal,global`
+* `regions.properties` contains for each region a list of package names that are exported in this region, e.g. `global=d.e.f,test,a.b.c`
