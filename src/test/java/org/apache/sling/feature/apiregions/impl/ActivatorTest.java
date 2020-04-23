@@ -207,7 +207,7 @@ public class ActivatorTest {
 
         Activator a = new Activator();
         a.bundleContext = bc;
-
+        a.configuration = new RegionConfiguration(null, null, null, null, null);
         FrameworkEvent ev = Mockito.mock(FrameworkEvent.class);
         Mockito.when(ev.getType()).thenReturn(FrameworkEvent.STARTED);
 

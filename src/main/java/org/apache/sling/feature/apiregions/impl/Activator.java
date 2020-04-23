@@ -45,6 +45,9 @@ import org.osgi.resource.Resource;
 public class Activator implements BundleActivator, FrameworkListener {
     static final String MANAGED_SERVICE_PKG_NAME = "org.osgi.service.cm";
     static final String MANAGED_SERVICE_CLASS_NAME = MANAGED_SERVICE_PKG_NAME + ".ManagedService";
+    static final String MANAGED_SERVICE_FACTORY_CLASS_NAME = MANAGED_SERVICE_PKG_NAME + ".ManagedServiceFactory";
+    static final String FACTORY_PID = "org.apache.sling.feature.apiregions.factory";
+
     static final String REGIONS_PROPERTY_NAME = "org.apache.sling.feature.apiregions.regions";
 
     static final Logger LOG = Logger.getLogger(ResolverHookImpl.class.getName());
@@ -52,9 +55,13 @@ public class Activator implements BundleActivator, FrameworkListener {
     BundleContext bundleContext;
     ServiceRegistration<ResolverHookFactory> hookRegistration;
 
+    RegionConfiguration configuration;
+
     @Override
     public synchronized void start(BundleContext context) throws Exception {
         bundleContext = context;
+
+        createConfiguration();
 
         registerHook();
 
@@ -66,6 +73,14 @@ public class Activator implements BundleActivator, FrameworkListener {
         // All services automatically get unregistered by the framework.
     }
 
+    private void createConfiguration() {
+        try {
+            this.configuration = new RegionConfiguration(bundleContext);
+        } catch (Exception e) {
+            LOG.log(Level.SEVERE, "Problem activating API Regions runtime enforcement component", e);
+        }
+    }
+
     synchronized void registerHook() {
         if (hookRegistration != null)
             return; // There is already a hook, no need to re-register
@@ -75,14 +90,8 @@ public class Activator implements BundleActivator, FrameworkListener {
             return; // Component not enabled
         }
 
-        Dictionary<String, Object> props = new Hashtable<>();
-        try {
-            final RegionConfiguration cfg = new RegionConfiguration(bundleContext, props);
-            RegionEnforcer enforcer = new RegionEnforcer(cfg);
-            hookRegistration = bundleContext.registerService(ResolverHookFactory.class, enforcer, props);
-        } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Problem activating API Regions runtime enforcement component", e);
-        }
+        RegionEnforcer enforcer = new RegionEnforcer(this.configuration);
+        hookRegistration = bundleContext.registerService(ResolverHookFactory.class, enforcer, this.configuration.getRegistrationProperties());
     }
 
     synchronized void unregisterHook() {
@@ -109,56 +118,107 @@ public class Activator implements BundleActivator, FrameworkListener {
             // Because this fragment is a framework extension, we need to use the wiring API to find the CM API.
             Collection<BundleCapability> providers = fw.findProviders(cmReq);
             for (BundleCapability cap : providers) {
-                try {
-                    ClassLoader loader = cap.getRevision().getWiring().getClassLoader();
-                    Class<?> msClass = loader.loadClass(MANAGED_SERVICE_CLASS_NAME);
-                    Object ms = Proxy.newProxyInstance(loader, new Class[] {msClass}, new InvocationHandler() {
-                        @Override
-                        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                            Class<?> mdDecl = method.getDeclaringClass();
-                            if (mdDecl.equals(Object.class)) {
-                                switch (method.getName()) {
-                                    case "equals" :
-                                        return proxy == args[0];
-                                    case "hashCode" :
-                                        return System.identityHashCode(proxy);
-                                    case "toString" :
-                                        return "Proxy for " + msClass;
-                                    default :
-                                        throw new UnsupportedOperationException("Method " + method
-                                            + " not supported on proxy for " + msClass);
-                                }
-                            }
-                            if ("updated".equals(method.getName())) {
-                                if (args.length == 1) {
-                                    Object arg = args[0];
-                                    if (arg == null) {
-                                        registerHook();
-                                    } else if (arg instanceof Dictionary) {
-                                        Dictionary<?,?> props = (Dictionary<?,?>) args[0];
-                                        Object disabled = props.get("disable");
-                                        if ("true".equals(disabled)) {
-                                            unregisterHook();
-                                        } else {
-                                            registerHook();
-                                        }
-                                    }
-                                }
-                            }
-                            return null;
-                        }
-                    });
-                    Dictionary<String, Object> props = new Hashtable<>();
-                    props.put(Constants.SERVICE_PID, getClass().getPackage().getName());
-                    bundleContext.registerService(MANAGED_SERVICE_CLASS_NAME, ms, props);
-
-                    return; // ManagedService registration successful. Exit method.
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Problem attempting to register ManagedService from " + cap, e);
+                if ( registerManagedService(cap) && registerManagedServiceFactory(cap)) {
+                    break;
                 }
             }
             LOG.log(Level.INFO, "No Configuration Admin API available");
         }
+    }
+
+    private boolean registerManagedService(final BundleCapability cap) {
+        try {
+            ClassLoader loader = cap.getRevision().getWiring().getClassLoader();
+            Class<?> msClass = loader.loadClass(MANAGED_SERVICE_CLASS_NAME);
+            Object ms = Proxy.newProxyInstance(loader, new Class[] {msClass}, new InvocationHandler() {
+                @Override
+                public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                    Class<?> mdDecl = method.getDeclaringClass();
+                    if (mdDecl.equals(Object.class)) {
+                        switch (method.getName()) {
+                            case "equals" :
+                                return proxy == args[0];
+                            case "hashCode" :
+                                return System.identityHashCode(proxy);
+                            case "toString" :
+                                return "Proxy for " + msClass;
+                            default :
+                                throw new UnsupportedOperationException("Method " + method
+                                    + " not supported on proxy for " + msClass);
+                        }
+                    }
+                    if ("updated".equals(method.getName()) && args.length == 1) {
+                        Object arg = args[0];
+                        if (arg == null) {
+                            registerHook();
+                        } else if (arg instanceof Dictionary) {
+                            Dictionary<?,?> props = (Dictionary<?,?>) args[0];
+                            Object disabled = props.get("disable");
+                            if ("true".equals(disabled)) {
+                                unregisterHook();
+                            } else {
+                                registerHook();
+                            }
+                        }
+                    }
+                    return null;
+                }
+            });
+            Dictionary<String, Object> props = new Hashtable<>();
+            props.put(Constants.SERVICE_PID, getClass().getPackage().getName());
+            bundleContext.registerService(MANAGED_SERVICE_CLASS_NAME, ms, props);
+
+            return true;
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Problem attempting to register ManagedService from " + cap, e);
+        }
+        return false;
+    }
+
+    private boolean registerManagedServiceFactory(final BundleCapability cap) {
+        try {
+            ClassLoader loader = cap.getRevision().getWiring().getClassLoader();
+            Class<?> msClass = loader.loadClass(MANAGED_SERVICE_FACTORY_CLASS_NAME);
+            Object msf = Proxy.newProxyInstance(loader, new Class[] {msClass}, new InvocationHandler() {
+                @Override
+                public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                    Class<?> mdDecl = method.getDeclaringClass();
+                    if (mdDecl.equals(Object.class)) {
+                        switch (method.getName()) {
+                            case "equals" :
+                                return proxy == args[0];
+                            case "hashCode" :
+                                return System.identityHashCode(proxy);
+                            case "toString" :
+                                return "Proxy for " + msClass;
+                            default :
+                                throw new UnsupportedOperationException("Method " + method
+                                    + " not supported on proxy for " + msClass);
+                        }
+                    }
+                    if ("updated".equals(method.getName()) && args.length == 2) {
+                        final String pid = (String)args[0];
+                        @SuppressWarnings("unchecked")
+                        final Dictionary<String, Object> props = (Dictionary<String, Object>) args[1];
+                        configuration.setConfig(pid, props);
+                    } else if ("deleted".equals(method.getName()) && args.length == 1) {
+                        final String pid = (String)args[0];
+                        configuration.removeConfig(pid);
+                    } else if ("getName".equals(method.getName()) && args.length == 0 ) {
+                        return "Region Factory Configuration";
+                    }
+                    return null;
+                }
+            });
+            Dictionary<String, Object> props = new Hashtable<>();
+            props.put(Constants.SERVICE_PID, FACTORY_PID);
+            bundleContext.registerService(MANAGED_SERVICE_FACTORY_CLASS_NAME, msf, props);
+
+            return true;
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Problem attempting to register ManagedServiceFactory from " + cap, e);
+        }
+        return false;
     }
 
     static Requirement createPackageRequirement() {

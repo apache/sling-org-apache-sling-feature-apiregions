@@ -18,8 +18,6 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.Collection;
 
 import org.osgi.framework.hooks.resolver.ResolverHook;
@@ -30,8 +28,7 @@ class RegionEnforcer implements ResolverHookFactory {
 
     final RegionConfiguration configuration;
 
-    RegionEnforcer(RegionConfiguration configuration)
-            throws IOException, URISyntaxException {
+    RegionEnforcer(RegionConfiguration configuration) {
         this.configuration = configuration;
     }
 

@@ -31,12 +31,14 @@ import java.util.Collections;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
@@ -55,11 +57,20 @@ class RegionConfiguration {
     static final String FEATURE_REGION_FILENAME = "features.properties";
     static final String REGION_PACKAGE_FILENAME = "regions.properties";
 
-    final Map<Map.Entry<String, Version>, List<String>> bsnVerMap;
-    final Map<String, Set<String>> bundleFeatureMap;
-    final Map<String, Set<String>> featureRegionMap;
-    final Map<String, Set<String>> regionPackageMap;
+    private static final String PROP_idbsnver = "mapping.bundleid.bsnver";
+    private static final String PROP_bundleFeatures = "mapping.bundleid.features";
+    private static final String PROP_featureRegions = "mapping.featureid.regions";
+    private static final String PROP_regionPackage = "mapping.region.packages";
+
+    volatile Map<Map.Entry<String, Version>, List<String>> bsnVerMap;
+    volatile Map<String, Set<String>> bundleFeatureMap;
+    volatile Map<String, Set<String>> featureRegionMap;
+    volatile Map<String, Set<String>> regionPackageMap;
     final Set<String> defaultRegions;
+
+    private final Dictionary<String, Object> regProps = new Hashtable<>();
+
+    private final Map<String, Dictionary<String, Object>> factoryConfigs = new ConcurrentHashMap<>();
 
     RegionConfiguration(Map<Entry<String, Version>, List<String>> bsnVerMap, Map<String, Set<String>> bundleFeatureMap,
                         Map<String, Set<String>> featureRegionMap, Map<String, Set<String>> regionPackageMap, Set<String> defaultRegions) {
@@ -69,8 +80,10 @@ class RegionConfiguration {
         this.regionPackageMap = regionPackageMap;
         this.defaultRegions = defaultRegions;
     }
-    RegionConfiguration(BundleContext context, Dictionary<String, Object> regProps)
+
+    RegionConfiguration(final BundleContext context)
             throws IOException, URISyntaxException {
+
         URI idbsnverFile = getDataFileURI(context, IDBSNVER_FILENAME);
         // Register the location as a service property for diagnostic purposes
         regProps.put(IDBSNVER_FILENAME, idbsnverFile.toString());
@@ -170,9 +183,29 @@ class RegionConfiguration {
         List<String> l = bsnVerMap.get(bsnVer);
         if (l == null) {
             l = new ArrayList<>();
-            bsnVerMap.put(bsnVer, l);
+        } else {
+            l = new ArrayList<>(l);
         }
+        bsnVerMap.put(bsnVer, l);
         l.add(artifactId);
+    }
+
+    private static void removeBsnVerArtifact(
+            Map<Map.Entry<String, Version>, List<String>> bsnVerMap,
+            String bundleSymbolicName, String bundleVersion,
+            String artifactId) {
+        Version version = Version.valueOf(bundleVersion);
+        Map.Entry<String, Version> bsnVer = new AbstractMap.SimpleEntry<>(bundleSymbolicName, version);
+        List<String> l = bsnVerMap.get(bsnVer);
+        if (l != null) {
+            l = new ArrayList<>(l);
+            l.remove(artifactId);
+            if ( l.isEmpty() ) {
+                bsnVerMap.remove(bsnVer);
+            } else {
+                bsnVerMap.put(bsnVer, l);
+            }
+        }
     }
 
     private static Map<String, Set<String>> populateBundleFeatureMap(URI bundlesFile) throws IOException {
@@ -196,24 +229,35 @@ class RegionConfiguration {
         }
 
         for (String n : p.stringPropertyNames()) {
-            String[] features = p.getProperty(n).split(",");
-            addValuesToMap(m, n, features);
+            String[] values = p.getProperty(n).split(",");
+            addValuesToMap(m, n, Arrays.asList(values));
         }
 
         return m;
     }
 
-    private static void addValuesToMap(Map<String, Set<String>> map, String key, String ... values) {
-        addValuesToMap(map, key, Arrays.asList(values));
-
-    }
     private static void addValuesToMap(Map<String, Set<String>> map, String key, Collection<String> values) {
         Set<String> bf = map.get(key);
         if (bf == null) {
             bf = new LinkedHashSet<>(); // It's important that the insertion order is maintained.
-            map.put(key, bf);
+        } else {
+            bf = new LinkedHashSet<>(bf);
         }
+        map.put(key, bf);
         bf.addAll(values);
+    }
+
+    private static void removeValuesFromMap(Map<String, Set<String>> map, String key, Collection<String> values) {
+        Set<String> bf = map.get(key);
+        if (bf != null) {
+            bf = new LinkedHashSet<>(bf); // It's important that the insertion order is maintained.
+            bf.removeAll(values);
+            if ( bf.isEmpty() ) {
+                map.remove(key);
+            } else {
+                map.put(key, bf);
+            }
+        }
     }
 
     private URI getDataFileURI(BundleContext ctx, String name) throws IOException, URISyntaxException {
@@ -263,5 +307,138 @@ class RegionConfiguration {
 
     public Set<String> getDefaultRegions() {
         return defaultRegions;
+    }
+
+    public Dictionary<String, Object> getRegistrationProperties() {
+        return regProps;
+    }
+
+    private String[] convert(final Object obj) {
+        if ( obj instanceof String[]) {
+            return (String[])obj;
+        }
+        return new String[] {obj.toString()};
+    }
+
+    /**
+     * Add a new factory configuration
+     * @param pid The pid
+     * @param props The properties
+     */
+    public void setConfig(final String pid, final Dictionary<String, Object> props) {
+        this.removeConfig(pid);
+        this.factoryConfigs.put(pid, props);
+        // bundle id to bsnver
+        Object valObj = props.get(PROP_idbsnver);
+        if ( valObj != null ) {
+            final Map<Map.Entry<String, Version>, List<String>> newMap = new HashMap<>(this.bsnVerMap);
+            for(final String val : convert(valObj)) {
+                final String[] parts = val.split("=");
+                final String n = parts[0];
+                final String[] bsnver = parts[1].split("~");
+                addBsnVerArtifact(newMap, bsnver[0], bsnver[1], n);
+            }
+            this.bsnVerMap = newMap;
+        }
+
+        // bundle id to features
+        valObj = props.get(PROP_bundleFeatures);
+        if ( valObj != null ) {
+            final Map<String, Set<String>> newMap = new HashMap<>(this.bundleFeatureMap);
+            for(final String val : convert(valObj)) {
+                final String[] parts = val.split("=");
+                final String n = parts[0];
+                final String[] features = parts[1].split(",");
+                addValuesToMap(newMap, n, Arrays.asList(features));
+            }
+            this.bundleFeatureMap = newMap;
+        }
+
+        // feature id to regions
+        valObj = props.get(PROP_featureRegions);
+        if ( valObj != null ) {
+            final Map<String, Set<String>> newMap = new HashMap<>(this.featureRegionMap);
+            for(final String val : convert(valObj)) {
+                final String[] parts = val.split("=");
+                final String n = parts[0];
+                final String[] regions = parts[1].split(",");
+                addValuesToMap(newMap, n, Arrays.asList(regions));
+            }
+            this.featureRegionMap = newMap;
+        }
+
+        // region to packages
+        valObj = props.get(PROP_regionPackage);
+        if ( valObj != null ) {
+            final Map<String, Set<String>> newMap = new HashMap<>(this.regionPackageMap);
+            for(final String val : convert(valObj)) {
+                final String[] parts = val.split("=");
+                final String n = parts[0];
+                final String[] packages = parts[1].split(",");
+                addValuesToMap(newMap, n, Arrays.asList(packages));
+            }
+            this.regionPackageMap = newMap;
+        }
+    }
+
+    /**
+     * Remove a factory configuration
+     * @param pid The pid
+     */
+    public void removeConfig(final String pid) {
+        final Dictionary<String, Object> props = this.factoryConfigs.remove(pid);
+        if ( props != null ) {
+            // bundle id to bsnver
+            Object valObj = props.get(PROP_idbsnver);
+            if ( valObj != null ) {
+                final Map<Map.Entry<String, Version>, List<String>> newMap = new HashMap<>(this.bsnVerMap);
+                for(final String val : convert(valObj)) {
+                    final String[] parts = val.split("=");
+                    final String n = parts[0];
+                    final String[] bsnver = parts[1].split("~");
+                    removeBsnVerArtifact(newMap, bsnver[0], bsnver[1], n);
+                }
+                this.bsnVerMap = newMap;
+            }
+
+            // bundle id to features
+            valObj = props.get(PROP_bundleFeatures);
+            if ( valObj != null ) {
+                final Map<String, Set<String>> newMap = new HashMap<>(this.bundleFeatureMap);
+                for(final String val : convert(valObj)) {
+                    final String[] parts = val.split("=");
+                    final String n = parts[0];
+                    final String[] features = parts[1].split(",");
+                    removeValuesFromMap(newMap, n, Arrays.asList(features));
+                }
+                this.bundleFeatureMap = newMap;
+            }
+
+            // feature id to regions
+            valObj = props.get(PROP_featureRegions);
+            if ( valObj != null ) {
+                final Map<String, Set<String>> newMap = new HashMap<>(this.featureRegionMap);
+                for(final String val : convert(valObj)) {
+                    final String[] parts = val.split("=");
+                    final String n = parts[0];
+                    final String[] regions = parts[1].split(",");
+                    removeValuesFromMap(newMap, n, Arrays.asList(regions));
+                }
+                this.featureRegionMap = newMap;
+            }
+
+            // region to packages
+            valObj = props.get(PROP_regionPackage);
+            if ( valObj != null ) {
+                final Map<String, Set<String>> newMap = new HashMap<>(this.regionPackageMap);
+                for(final String val : convert(valObj)) {
+                    final String[] parts = val.split("=");
+                    final String n = parts[0];
+                    final String[] packages = parts[1].split(",");
+                    removeValuesFromMap(newMap, n, Arrays.asList(packages));
+                }
+                this.regionPackageMap = newMap;
+            }
+        }
     }
 }
