@@ -18,14 +18,14 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.APIREGIONS_JOINGLOBAL;
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.BUNDLE_FEATURE_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.DEFAULT_REGIONS;
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.FEATURE_REGION_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.IDBSNVER_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.PROPERTIES_FILE_LOCATION;
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.PROPERTIES_RESOURCE_PREFIX;
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.REGION_PACKAGE_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.APIREGIONS_JOINGLOBAL;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.BUNDLE_FEATURE_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.DEFAULT_REGIONS;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.FEATURE_REGION_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.IDBSNVER_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.PROPERTIES_FILE_LOCATION;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.PROPERTIES_RESOURCE_PREFIX;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.REGION_PACKAGE_FILENAME;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;

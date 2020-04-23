@@ -18,11 +18,11 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.BUNDLE_FEATURE_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.FEATURE_REGION_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.IDBSNVER_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.PROPERTIES_RESOURCE_PREFIX;
-import static org.apache.sling.feature.apiregions.impl.RegionConfiguration.REGION_PACKAGE_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.BUNDLE_FEATURE_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.FEATURE_REGION_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.IDBSNVER_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.PROPERTIES_RESOURCE_PREFIX;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.REGION_PACKAGE_FILENAME;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -185,7 +185,7 @@ public class ActivatorTest {
         BundleContext bc = Mockito.mock(BundleContext.class);
         Mockito.when(bc.getBundle()).thenReturn(fw);
         Mockito.when(bc.getProperty(Activator.REGIONS_PROPERTY_NAME)).thenReturn("*");
-        Mockito.when(bc.getProperty(RegionConfiguration.PROPERTIES_FILE_LOCATION)).thenReturn(resourceDir);
+        Mockito.when(bc.getProperty(RegionConstants.PROPERTIES_FILE_LOCATION)).thenReturn(resourceDir);
         Mockito.when(bc.registerService(
             Mockito.eq("org.osgi.service.cm.ManagedService"),
             Mockito.any(),
@@ -207,7 +207,7 @@ public class ActivatorTest {
 
         Activator a = new Activator();
         a.bundleContext = bc;
-        a.configuration = new RegionConfiguration(null, null, null, null, null);
+        a.configuration = new RegionConfiguration(Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptySet());
         FrameworkEvent ev = Mockito.mock(FrameworkEvent.class);
         Mockito.when(ev.getType()).thenReturn(FrameworkEvent.STARTED);
 

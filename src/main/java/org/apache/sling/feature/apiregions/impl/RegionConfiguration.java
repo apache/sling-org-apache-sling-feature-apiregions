@@ -44,73 +44,75 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
 
 class RegionConfiguration {
-    public static final String GLOBAL_REGION = "global";
 
-    static final String CLASSLOADER_PSEUDO_PROTOCOL = "classloader://";
-    static final String APIREGIONS_JOINGLOBAL = "sling.feature.apiregions.joinglobal";
-    static final String DEFAULT_REGIONS = "sling.feature.apiregions.default";
-    static final String PROPERTIES_RESOURCE_PREFIX = "sling.feature.apiregions.resource.";
-    static final String PROPERTIES_FILE_LOCATION = "sling.feature.apiregions.location";
-
-    static final String IDBSNVER_FILENAME = "idbsnver.properties";
-    static final String BUNDLE_FEATURE_FILENAME = "bundles.properties";
-    static final String FEATURE_REGION_FILENAME = "features.properties";
-    static final String REGION_PACKAGE_FILENAME = "regions.properties";
-
-    private static final String PROP_idbsnver = "mapping.bundleid.bsnver";
-    private static final String PROP_bundleFeatures = "mapping.bundleid.features";
-    private static final String PROP_featureRegions = "mapping.featureid.regions";
-    private static final String PROP_regionPackage = "mapping.region.packages";
 
     volatile Map<Map.Entry<String, Version>, List<String>> bsnVerMap;
     volatile Map<String, Set<String>> bundleFeatureMap;
     volatile Map<String, Set<String>> featureRegionMap;
     volatile Map<String, Set<String>> regionPackageMap;
+
     final Set<String> defaultRegions;
 
     private final Dictionary<String, Object> regProps = new Hashtable<>();
 
     private final Map<String, Dictionary<String, Object>> factoryConfigs = new ConcurrentHashMap<>();
 
+    private final Map<Map.Entry<String, Version>, List<String>> baseBsnVerMap;
+    private final Map<String, Set<String>> baseBundleFeatureMap;
+    private final Map<String, Set<String>> baseFeatureRegionMap;
+    private final Map<String, Set<String>> baseRegionPackageMap;
+
+    private final String toGlobalConfig;
+
     RegionConfiguration(Map<Entry<String, Version>, List<String>> bsnVerMap, Map<String, Set<String>> bundleFeatureMap,
                         Map<String, Set<String>> featureRegionMap, Map<String, Set<String>> regionPackageMap, Set<String> defaultRegions) {
-        this.bsnVerMap = bsnVerMap;
-        this.bundleFeatureMap = bundleFeatureMap;
-        this.featureRegionMap = featureRegionMap;
-        this.regionPackageMap = regionPackageMap;
         this.defaultRegions = defaultRegions;
+
+        this.baseBsnVerMap = new HashMap<>(bsnVerMap);
+        this.baseBundleFeatureMap = new HashMap<>(bundleFeatureMap);
+        this.baseFeatureRegionMap = new HashMap<>(featureRegionMap);
+        this.baseRegionPackageMap = new HashMap<>(regionPackageMap);
+
+        this.toGlobalConfig = null;
+
+        updateConfiguration();
     }
 
     RegionConfiguration(final BundleContext context)
             throws IOException, URISyntaxException {
 
-        URI idbsnverFile = getDataFileURI(context, IDBSNVER_FILENAME);
+        URI idbsnverFile = getDataFileURI(context, RegionConstants.IDBSNVER_FILENAME);
         // Register the location as a service property for diagnostic purposes
-        regProps.put(IDBSNVER_FILENAME, idbsnverFile.toString());
+        regProps.put(RegionConstants.IDBSNVER_FILENAME, idbsnverFile.toString());
         Map<Entry<String, Version>, List<String>> bvm = populateBSNVerMap(idbsnverFile);
 
-        URI bundlesFile = getDataFileURI(context, BUNDLE_FEATURE_FILENAME);
+        URI bundlesFile = getDataFileURI(context, RegionConstants.BUNDLE_FEATURE_FILENAME);
         // Register the location as a service property for diagnostic purposes
-        regProps.put(BUNDLE_FEATURE_FILENAME, bundlesFile.toString());
+        regProps.put(RegionConstants.BUNDLE_FEATURE_FILENAME, bundlesFile.toString());
         Map<String, Set<String>> bfm = populateBundleFeatureMap(bundlesFile);
 
-        URI featuresFile = getDataFileURI(context, FEATURE_REGION_FILENAME);
+        URI featuresFile = getDataFileURI(context, RegionConstants.FEATURE_REGION_FILENAME);
         // Register the location as a service property for diagnostic purposes
-        regProps.put(FEATURE_REGION_FILENAME, featuresFile.toString());
+        regProps.put(RegionConstants.FEATURE_REGION_FILENAME, featuresFile.toString());
         Map<String, Set<String>> frm = populateFeatureRegionMap(featuresFile);
 
-        URI regionsFile = getDataFileURI(context, REGION_PACKAGE_FILENAME);
+        URI regionsFile = getDataFileURI(context, RegionConstants.REGION_PACKAGE_FILENAME);
         // Register the location as a service property for diagnostic purposes
-        regProps.put(REGION_PACKAGE_FILENAME, regionsFile.toString());
+        regProps.put(RegionConstants.REGION_PACKAGE_FILENAME, regionsFile.toString());
         Map<String, Set<String>> rpm = populateRegionPackageMap(regionsFile);
 
-        String toglobal = context.getProperty(APIREGIONS_JOINGLOBAL);
-        if (toglobal != null) {
-            joinRegionsWithGlobal(toglobal, rpm);
-            regProps.put(APIREGIONS_JOINGLOBAL, toglobal);
+        // store base configuration
+        this.baseBsnVerMap = bvm;
+        this.baseBundleFeatureMap = bfm;
+        this.baseFeatureRegionMap = frm;
+        this.baseRegionPackageMap = rpm;
+
+        this.toGlobalConfig = context.getProperty(RegionConstants.APIREGIONS_JOINGLOBAL);
+        if ( this.toGlobalConfig != null ) {
+            regProps.put(RegionConstants.APIREGIONS_JOINGLOBAL, this.toGlobalConfig);
         }
 
-        String defRegProp = context.getProperty(DEFAULT_REGIONS);
+        String defRegProp = context.getProperty(RegionConstants.DEFAULT_REGIONS);
         if (defRegProp != null) {
             Set<String> defRegs = new HashSet<>();
             for (String region : Arrays.asList(defRegProp.split(","))) {
@@ -120,10 +122,72 @@ class RegionConfiguration {
             }
             defaultRegions = Collections.unmodifiableSet(defRegs);
             if (defaultRegions.size() > 0) {
-                regProps.put(DEFAULT_REGIONS, defaultRegions.toString());
+                regProps.put(RegionConstants.DEFAULT_REGIONS, defaultRegions.toString());
             }
         } else {
             defaultRegions = Collections.emptySet();
+        }
+
+        updateConfiguration();
+    }
+
+    private void updateConfiguration() {
+        final Map<Entry<String, Version>, List<String>> bvm = new HashMap<>(this.baseBsnVerMap);
+        final Map<String, Set<String>> bfm = new HashMap<>(this.baseBundleFeatureMap);
+        final Map<String, Set<String>> frm = new HashMap<>(this.baseFeatureRegionMap);
+        final Map<String, Set<String>> rpm = new HashMap<>(this.baseRegionPackageMap);
+
+        // apply configurations
+        for(final Dictionary<String, Object> props : this.factoryConfigs.values()) {
+            // bundle id to bsnver
+            Object valObj = props.get(RegionConstants.PROP_idbsnver);
+            if ( valObj != null ) {
+                for(final String val : convert(valObj)) {
+                    final String[] parts = val.split("=");
+                    final String n = parts[0];
+                    final String[] bsnver = parts[1].split("~");
+                    addBsnVerArtifact(bvm, bsnver[0], bsnver[1], n);
+                }
+            }
+
+            // bundle id to features
+            valObj = props.get(RegionConstants.PROP_bundleFeatures);
+            if ( valObj != null ) {
+                for(final String val : convert(valObj)) {
+                    final String[] parts = val.split("=");
+                    final String n = parts[0];
+                    final String[] features = parts[1].split(",");
+                    addValuesToMap(bfm, n, Arrays.asList(features));
+                }
+            }
+
+            // feature id to regions
+            valObj = props.get(RegionConstants.PROP_featureRegions);
+            if ( valObj != null ) {
+                for(final String val : convert(valObj)) {
+                    final String[] parts = val.split("=");
+                    final String n = parts[0];
+                    final String[] regions = parts[1].split(",");
+                    addValuesToMap(frm, n, Arrays.asList(regions));
+                }
+            }
+
+            // region to packages
+            valObj = props.get(RegionConstants.PROP_regionPackage);
+            if ( valObj != null ) {
+                for(final String val : convert(valObj)) {
+                    final String[] parts = val.split("=");
+                    final String n = parts[0];
+                    final String[] packages = parts[1].split(",");
+                    addValuesToMap(rpm, n, Arrays.asList(packages));
+                }
+            }
+
+        }
+
+        // join regions
+        if (this.toGlobalConfig != null) {
+            joinRegionsWithGlobal(this.toGlobalConfig, rpm);
         }
 
         // Make all maps and their contents unmodifiable
@@ -131,6 +195,7 @@ class RegionConfiguration {
         bundleFeatureMap = unmodifiableMapToSet(bfm);
         featureRegionMap = unmodifiableMapToSet(frm);
         regionPackageMap = unmodifiableMapToSet(rpm);
+
     }
 
     private static <K,V> Map<K, List<V>> unmodifiableMapToList(Map<K, List<V>> m) {
@@ -153,7 +218,7 @@ class RegionConfiguration {
             if (packages == null)
                 continue;
 
-            addValuesToMap(rpm, GLOBAL_REGION, packages);
+            addValuesToMap(rpm, RegionConstants.GLOBAL_REGION, packages);
             rpm.remove(region);
         }
     }
@@ -183,29 +248,9 @@ class RegionConfiguration {
         List<String> l = bsnVerMap.get(bsnVer);
         if (l == null) {
             l = new ArrayList<>();
-        } else {
-            l = new ArrayList<>(l);
+            bsnVerMap.put(bsnVer, l);
         }
-        bsnVerMap.put(bsnVer, l);
         l.add(artifactId);
-    }
-
-    private static void removeBsnVerArtifact(
-            Map<Map.Entry<String, Version>, List<String>> bsnVerMap,
-            String bundleSymbolicName, String bundleVersion,
-            String artifactId) {
-        Version version = Version.valueOf(bundleVersion);
-        Map.Entry<String, Version> bsnVer = new AbstractMap.SimpleEntry<>(bundleSymbolicName, version);
-        List<String> l = bsnVerMap.get(bsnVer);
-        if (l != null) {
-            l = new ArrayList<>(l);
-            l.remove(artifactId);
-            if ( l.isEmpty() ) {
-                bsnVerMap.remove(bsnVer);
-            } else {
-                bsnVerMap.put(bsnVer, l);
-            }
-        }
     }
 
     private static Map<String, Set<String>> populateBundleFeatureMap(URI bundlesFile) throws IOException {
@@ -240,30 +285,15 @@ class RegionConfiguration {
         Set<String> bf = map.get(key);
         if (bf == null) {
             bf = new LinkedHashSet<>(); // It's important that the insertion order is maintained.
-        } else {
-            bf = new LinkedHashSet<>(bf);
+            map.put(key, bf);
         }
-        map.put(key, bf);
         bf.addAll(values);
     }
 
-    private static void removeValuesFromMap(Map<String, Set<String>> map, String key, Collection<String> values) {
-        Set<String> bf = map.get(key);
-        if (bf != null) {
-            bf = new LinkedHashSet<>(bf); // It's important that the insertion order is maintained.
-            bf.removeAll(values);
-            if ( bf.isEmpty() ) {
-                map.remove(key);
-            } else {
-                map.put(key, bf);
-            }
-        }
-    }
-
     private URI getDataFileURI(BundleContext ctx, String name) throws IOException, URISyntaxException {
-        String fn = ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + name);
+        String fn = ctx.getProperty(RegionConstants.PROPERTIES_RESOURCE_PREFIX + name);
         if (fn == null) {
-            String loc = ctx.getProperty(PROPERTIES_FILE_LOCATION);
+            String loc = ctx.getProperty(RegionConstants.PROPERTIES_FILE_LOCATION);
             if (loc != null) {
                 fn = loc + "/" + name;
             }
@@ -274,9 +304,9 @@ class RegionConfiguration {
                     + "region definition resource: " + name);
 
         if (fn.contains(":")) {
-            if (fn.startsWith(CLASSLOADER_PSEUDO_PROTOCOL)) {
+            if (fn.startsWith(RegionConstants.CLASSLOADER_PSEUDO_PROTOCOL)) {
                 // It's using the 'classloader:' protocol looks up the location from the classloader
-                String loc = fn.substring(CLASSLOADER_PSEUDO_PROTOCOL.length());
+                String loc = fn.substring(RegionConstants.CLASSLOADER_PSEUDO_PROTOCOL.length());
                 if (!loc.startsWith("/"))
                     loc = "/" + loc;
                 fn = getClass().getResource(loc).toString();
@@ -326,59 +356,8 @@ class RegionConfiguration {
      * @param props The properties
      */
     public void setConfig(final String pid, final Dictionary<String, Object> props) {
-        this.removeConfig(pid);
         this.factoryConfigs.put(pid, props);
-        // bundle id to bsnver
-        Object valObj = props.get(PROP_idbsnver);
-        if ( valObj != null ) {
-            final Map<Map.Entry<String, Version>, List<String>> newMap = new HashMap<>(this.bsnVerMap);
-            for(final String val : convert(valObj)) {
-                final String[] parts = val.split("=");
-                final String n = parts[0];
-                final String[] bsnver = parts[1].split("~");
-                addBsnVerArtifact(newMap, bsnver[0], bsnver[1], n);
-            }
-            this.bsnVerMap = newMap;
-        }
-
-        // bundle id to features
-        valObj = props.get(PROP_bundleFeatures);
-        if ( valObj != null ) {
-            final Map<String, Set<String>> newMap = new HashMap<>(this.bundleFeatureMap);
-            for(final String val : convert(valObj)) {
-                final String[] parts = val.split("=");
-                final String n = parts[0];
-                final String[] features = parts[1].split(",");
-                addValuesToMap(newMap, n, Arrays.asList(features));
-            }
-            this.bundleFeatureMap = newMap;
-        }
-
-        // feature id to regions
-        valObj = props.get(PROP_featureRegions);
-        if ( valObj != null ) {
-            final Map<String, Set<String>> newMap = new HashMap<>(this.featureRegionMap);
-            for(final String val : convert(valObj)) {
-                final String[] parts = val.split("=");
-                final String n = parts[0];
-                final String[] regions = parts[1].split(",");
-                addValuesToMap(newMap, n, Arrays.asList(regions));
-            }
-            this.featureRegionMap = newMap;
-        }
-
-        // region to packages
-        valObj = props.get(PROP_regionPackage);
-        if ( valObj != null ) {
-            final Map<String, Set<String>> newMap = new HashMap<>(this.regionPackageMap);
-            for(final String val : convert(valObj)) {
-                final String[] parts = val.split("=");
-                final String n = parts[0];
-                final String[] packages = parts[1].split(",");
-                addValuesToMap(newMap, n, Arrays.asList(packages));
-            }
-            this.regionPackageMap = newMap;
-        }
+        updateConfiguration();
     }
 
     /**
@@ -388,57 +367,7 @@ class RegionConfiguration {
     public void removeConfig(final String pid) {
         final Dictionary<String, Object> props = this.factoryConfigs.remove(pid);
         if ( props != null ) {
-            // bundle id to bsnver
-            Object valObj = props.get(PROP_idbsnver);
-            if ( valObj != null ) {
-                final Map<Map.Entry<String, Version>, List<String>> newMap = new HashMap<>(this.bsnVerMap);
-                for(final String val : convert(valObj)) {
-                    final String[] parts = val.split("=");
-                    final String n = parts[0];
-                    final String[] bsnver = parts[1].split("~");
-                    removeBsnVerArtifact(newMap, bsnver[0], bsnver[1], n);
-                }
-                this.bsnVerMap = newMap;
-            }
-
-            // bundle id to features
-            valObj = props.get(PROP_bundleFeatures);
-            if ( valObj != null ) {
-                final Map<String, Set<String>> newMap = new HashMap<>(this.bundleFeatureMap);
-                for(final String val : convert(valObj)) {
-                    final String[] parts = val.split("=");
-                    final String n = parts[0];
-                    final String[] features = parts[1].split(",");
-                    removeValuesFromMap(newMap, n, Arrays.asList(features));
-                }
-                this.bundleFeatureMap = newMap;
-            }
-
-            // feature id to regions
-            valObj = props.get(PROP_featureRegions);
-            if ( valObj != null ) {
-                final Map<String, Set<String>> newMap = new HashMap<>(this.featureRegionMap);
-                for(final String val : convert(valObj)) {
-                    final String[] parts = val.split("=");
-                    final String n = parts[0];
-                    final String[] regions = parts[1].split(",");
-                    removeValuesFromMap(newMap, n, Arrays.asList(regions));
-                }
-                this.featureRegionMap = newMap;
-            }
-
-            // region to packages
-            valObj = props.get(PROP_regionPackage);
-            if ( valObj != null ) {
-                final Map<String, Set<String>> newMap = new HashMap<>(this.regionPackageMap);
-                for(final String val : convert(valObj)) {
-                    final String[] parts = val.split("=");
-                    final String n = parts[0];
-                    final String[] packages = parts[1].split(",");
-                    removeValuesFromMap(newMap, n, Arrays.asList(packages));
-                }
-                this.regionPackageMap = newMap;
-            }
+            updateConfiguration();
         }
     }
 }

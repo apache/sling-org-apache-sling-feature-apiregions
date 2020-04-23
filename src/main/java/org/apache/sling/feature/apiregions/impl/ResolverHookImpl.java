@@ -115,7 +115,7 @@ class ResolverHookImpl implements ResolverHook {
             List<String> capBundleArtifacts = this.configuration.getBsnVerMap().get(new AbstractMap.SimpleEntry<String, Version>(capBundleName, capBundleVersion));
             if (capBundleArtifacts == null) {
                 // Capability is not in any feature, everyone can access
-                coveredCaps.put(bc, RegionConfiguration.GLOBAL_REGION);
+                coveredCaps.put(bc, RegionConstants.GLOBAL_REGION);
                 continue nextCapability;
             }
 
@@ -132,7 +132,7 @@ class ResolverHookImpl implements ResolverHook {
             for (String capFeat : capFeatures) {
                 if (capFeat == null) {
                     // everyone can access capability not coming from a feature
-                    coveredCaps.put(bc, RegionConfiguration.GLOBAL_REGION);
+                    coveredCaps.put(bc, RegionConstants.GLOBAL_REGION);
                     continue nextCapability;
                 }
 
@@ -145,7 +145,7 @@ class ResolverHookImpl implements ResolverHook {
                 Set<String> capRegions = this.configuration.getFeatureRegionMap().get(capFeat);
                 if (capRegions == null || capRegions.size() == 0) {
                     // If the feature hosting the capability has no regions defined, everyone can access
-                    coveredCaps.put(bc, RegionConfiguration.GLOBAL_REGION);
+                    coveredCaps.put(bc, RegionConstants.GLOBAL_REGION);
                     continue nextCapability;
                 }
                 bcFeatureMap.put(bc, capFeat);
@@ -168,10 +168,10 @@ class ResolverHookImpl implements ResolverHook {
                     }
 
                     // Now check the global region
-                    Set<String> globalPackages = this.configuration.getRegionPackageMap().get(RegionConfiguration.GLOBAL_REGION);
+                    Set<String> globalPackages = this.configuration.getRegionPackageMap().get(RegionConstants.GLOBAL_REGION);
                     if (globalPackages != null && globalPackages.contains(packageName)) {
                         // If the export is in the global region everyone can access
-                        coveredCaps.put(bc, RegionConfiguration.GLOBAL_REGION);
+                        coveredCaps.put(bc, RegionConstants.GLOBAL_REGION);
                         continue nextCapability;
                     }
                 }
@@ -220,7 +220,7 @@ class ResolverHookImpl implements ResolverHook {
      */
     private void pruneCoveredCaps(Set<String> reqRegions, Map<BundleCapability,String> capMap) {
         Set<String> reqNonGlobalRegions = new HashSet<>(reqRegions);
-        reqNonGlobalRegions.remove(RegionConfiguration.GLOBAL_REGION);
+        reqNonGlobalRegions.remove(RegionConstants.GLOBAL_REGION);
 
         if (capMap.size() <= 1) {
             // Shortcut: there is only 0 or 1 capability, nothing to do
@@ -228,7 +228,7 @@ class ResolverHookImpl implements ResolverHook {
         }
 
         if (reqRegions.size() == 0
-                || Collections.singleton(RegionConfiguration.GLOBAL_REGION).equals(reqRegions)) {
+                || Collections.singleton(RegionConstants.GLOBAL_REGION).equals(reqRegions)) {
             // No regions (other than global) for the requirement: do nothing
             return;
         }

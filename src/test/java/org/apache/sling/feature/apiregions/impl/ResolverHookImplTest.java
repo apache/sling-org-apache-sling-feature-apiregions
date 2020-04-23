@@ -345,7 +345,7 @@ public class ResolverHookImplTest {
         bfmap.put("b20", Collections.singleton("f4"));
 
         Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f", new HashSet<>(Arrays.asList("r1", "r2", RegionConfiguration.GLOBAL_REGION)));
+        frmap.put("f", new HashSet<>(Arrays.asList("r1", "r2", RegionConstants.GLOBAL_REGION)));
         frmap.put("f1", Collections.singleton("r1"));
         frmap.put("f2", Collections.singleton("r2"));
         frmap.put("f3", Collections.singleton("r3"));
@@ -354,7 +354,7 @@ public class ResolverHookImplTest {
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("r0", Collections.singleton("org.bar"));
         rpmap.put("r1", new HashSet<>(Arrays.asList("org.blah", "org.foo")));
-        rpmap.put(RegionConfiguration.GLOBAL_REGION, Collections.singleton("org.bar.tar"));
+        rpmap.put(RegionConstants.GLOBAL_REGION, Collections.singleton("org.bar.tar"));
         rpmap.put("r3", Collections.singleton("xyz"));
 
         ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet()));
@@ -485,13 +485,13 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> frmap = new HashMap<>();
         frmap.put("f1", new HashSet<>(Arrays.asList(
-                RegionConfiguration.GLOBAL_REGION, "org.foo.blah")));
+                RegionConstants.GLOBAL_REGION, "org.foo.blah")));
         frmap.put("f2", new HashSet<>(Arrays.asList("org.foo.bar",
-                RegionConfiguration.GLOBAL_REGION, "org.foo.blah")));
+                RegionConstants.GLOBAL_REGION, "org.foo.blah")));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("org.foo.bar", Collections.singleton("org.test"));
-        rpmap.put(RegionConfiguration.GLOBAL_REGION, Collections.singleton("org.something"));
+        rpmap.put(RegionConstants.GLOBAL_REGION, Collections.singleton("org.something"));
         rpmap.put("org.foo.blah", Collections.singleton("org.something"));
 
         ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet()));
