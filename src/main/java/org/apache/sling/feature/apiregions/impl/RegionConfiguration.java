@@ -131,11 +131,11 @@ class RegionConfiguration {
         updateConfiguration();
     }
 
-    private void updateConfiguration() {
-        final Map<Entry<String, Version>, List<String>> bvm = new HashMap<>(this.baseBsnVerMap);
-        final Map<String, Set<String>> bfm = new HashMap<>(this.baseBundleFeatureMap);
-        final Map<String, Set<String>> frm = new HashMap<>(this.baseFeatureRegionMap);
-        final Map<String, Set<String>> rpm = new HashMap<>(this.baseRegionPackageMap);
+    private synchronized void updateConfiguration() {
+        final Map<Entry<String, Version>, List<String>> bvm = cloneMapOfLists(this.baseBsnVerMap);
+        final Map<String, Set<String>> bfm = cloneMapOfSets(this.baseBundleFeatureMap);
+        final Map<String, Set<String>> frm = cloneMapOfSets(this.baseFeatureRegionMap);
+        final Map<String, Set<String>> rpm = cloneMapOfSets(this.baseRegionPackageMap);
 
         // apply configurations
         for(final Dictionary<String, Object> props : this.factoryConfigs.values()) {
@@ -196,6 +196,22 @@ class RegionConfiguration {
         featureRegionMap = unmodifiableMapToSet(frm);
         regionPackageMap = unmodifiableMapToSet(rpm);
 
+    }
+
+    private static <K,V> Map<K, List<V>> cloneMapOfLists(Map<K, List<V>> m) {
+        final Map<K, List<V>> newMap = new HashMap<>();
+        for (Map.Entry<K, List<V>> entry : m.entrySet()) {
+            newMap.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
+        return newMap;
+    }
+
+    private static <K,V> Map<K, Set<V>> cloneMapOfSets(Map<K, Set<V>> m) {
+        final Map<K, Set<V>> newMap = new HashMap<>();
+        for (Map.Entry<K, Set<V>> entry : m.entrySet()) {
+            newMap.put(entry.getKey(), new LinkedHashSet<>(entry.getValue()));
+        }
+        return newMap;
     }
 
     private static <K,V> Map<K, List<V>> unmodifiableMapToList(Map<K, List<V>> m) {
