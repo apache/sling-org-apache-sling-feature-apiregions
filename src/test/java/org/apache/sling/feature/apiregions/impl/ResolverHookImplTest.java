@@ -18,8 +18,6 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
-import static org.junit.Assert.assertEquals;
-
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +38,8 @@ import org.osgi.framework.namespace.PackageNamespace;
 import org.osgi.framework.wiring.BundleCapability;
 import org.osgi.framework.wiring.BundleRequirement;
 import org.osgi.framework.wiring.BundleRevision;
+
+import static org.junit.Assert.assertEquals;
 
 public class ResolverHookImplTest {
     @Test
@@ -574,6 +574,48 @@ public class ResolverHookImplTest {
                 0, candidates1.size());
     }
 
+    @Test
+    public void testGetFeaturesForBundle() {
+        String bsn = "foo";
+        Version bver = new Version(1,2,3);
+        String blocation = "something://foobar";
+
+        Map<Map.Entry<String, Version>, List<String>> bsnVerMap = new HashMap<>();
+        Map<String, Set<String>> bundleFeatureMap = new HashMap<>();
+        bsnVerMap.put(new AbstractMap.SimpleEntry<String, Version>(bsn, bver),
+                Collections.singletonList("myorg:foo:1.2.3"));
+        bundleFeatureMap.put("myorg:foo:1.2.3", new HashSet<>(Arrays.asList("feature1")));
+
+        RegionConfiguration cfg = new RegionConfiguration(bsnVerMap, bundleFeatureMap,
+                Collections.emptyMap(), Collections.emptyMap(), Collections.emptySet());
+
+
+        ResolverHookImpl rhi = new ResolverHookImpl(cfg);
+
+        Bundle b = Mockito.mock(Bundle.class);
+        Mockito.when(b.getSymbolicName()).thenReturn(bsn);
+        Mockito.when(b.getVersion()).thenReturn(bver);
+        Mockito.when(b.getLocation()).thenReturn(blocation);
+        Set<String> features = rhi.getFeaturesForBundle(b);
+
+        assertEquals(Collections.singleton("feature1"), features);
+
+        // Try a bundle with a different version, same location
+        Bundle b2 = Mockito.mock(Bundle.class);
+        Mockito.when(b2.getSymbolicName()).thenReturn(bsn);
+        Mockito.when(b2.getVersion()).thenReturn(new Version(1,4,0));
+        Mockito.when(b2.getLocation()).thenReturn(blocation);
+        assertEquals(features, rhi.getFeaturesForBundle(b2));
+
+        // Try a bundle with the same bsn+version but different location
+        Bundle b3 = Mockito.mock(Bundle.class);
+        Mockito.when(b3.getSymbolicName()).thenReturn(bsn);
+        Mockito.when(b3.getVersion()).thenReturn(bver);
+        Mockito.when(b3.getLocation()).thenReturn("something://foobar2");
+        assertEquals(features, rhi.getFeaturesForBundle(b3));
+
+    }
+
     private BundleCapability mockCapability(String pkgName, String bid, Map<Entry<String, Version>, List<String>> bsnvermap) {
         for (Map.Entry<Map.Entry<String, Version>, List<String>> entry : bsnvermap.entrySet()) {
             if (entry.getValue().contains(bid)) {
@@ -593,10 +635,10 @@ public class ResolverHookImplTest {
         Mockito.when(bundle.getBundleId()).thenReturn(bundleID);
         Mockito.when(bundle.getSymbolicName()).thenReturn(bsn);
         Mockito.when(bundle.getVersion()).thenReturn(version);
+        Mockito.when(bundle.getLocation()).thenReturn("test://" + bsn + version + ".loc");
 
         BundleRevision br = Mockito.mock(BundleRevision.class);
         Mockito.when(br.getBundle()).thenReturn(bundle);
-
 
         BundleCapability cap = Mockito.mock(BundleCapability.class);
         Mockito.when(cap.getAttributes()).thenReturn(attrs);
@@ -620,6 +662,7 @@ public class ResolverHookImplTest {
         Mockito.when(bundle.getBundleId()).thenReturn(bundleID);
         Mockito.when(bundle.getSymbolicName()).thenReturn(bsn);
         Mockito.when(bundle.getVersion()).thenReturn(version);
+        Mockito.when(bundle.getLocation()).thenReturn("test://" + bsn + version + ".loc");
 
         BundleRevision br = Mockito.mock(BundleRevision.class);
         Mockito.when(br.getBundle()).thenReturn(bundle);
