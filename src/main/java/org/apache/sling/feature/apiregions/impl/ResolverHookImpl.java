@@ -245,10 +245,11 @@ class ResolverHookImpl implements ResolverHook {
     }
 
     Set<String> getFeaturesForBundle(Bundle bundle) {
-        Set<String> features = bundleLocationFeatureMap.get(bundle.getLocation());
-        if (features != null)
-            return features;
+        return bundleLocationFeatureMap.computeIfAbsent(bundle.getLocation(),
+                l -> getFeaturesForBundleFromConfig(bundle));
+    }
 
+    private Set<String> getFeaturesForBundleFromConfig(Bundle bundle) {
         Set<String> newSet = new HashSet<>();
         String bundleName = bundle.getSymbolicName();
         Version bundleVersion = bundle.getVersion();
@@ -262,12 +263,7 @@ class ResolverHookImpl implements ResolverHook {
             }
         }
 
-        Set<String> res = Collections.unmodifiableSet(newSet);
-        Set<String> prev = bundleLocationFeatureMap.putIfAbsent(bundle.getLocation(), res);
-        if (prev != null)
-            return prev;
-        else
-            return res;
+        return Collections.unmodifiableSet(newSet);
     }
 
     List<String> getRegionsForPackage(String packageName, String feature) {
