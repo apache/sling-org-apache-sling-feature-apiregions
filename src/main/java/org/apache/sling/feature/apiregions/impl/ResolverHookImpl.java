@@ -28,6 +28,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 
 import org.osgi.framework.Bundle;
@@ -40,6 +42,7 @@ import org.osgi.framework.wiring.BundleRevision;
 
 class ResolverHookImpl implements ResolverHook {
 
+    final ConcurrentMap<String, Set<String>> bundleLocationFeatureMap = new ConcurrentHashMap<>();
     final RegionConfiguration configuration;
 
     ResolverHookImpl(RegionConfiguration cfg) {
@@ -64,31 +67,17 @@ class ResolverHookImpl implements ResolverHook {
 
         Bundle reqBundle = requirement.getRevision().getBundle();
         long reqBundleID = reqBundle.getBundleId();
-        String reqBundleName = reqBundle.getSymbolicName();
-        Version reqBundleVersion = reqBundle.getVersion();
 
         Set<String> reqRegions = new HashSet<>(this.configuration.getDefaultRegions());
-        List<String> reqFeatures = new ArrayList<>();
-        List<String> aids = this.configuration.getBsnVerMap().get(new AbstractMap.SimpleEntry<String, Version>(reqBundleName, reqBundleVersion));
-        if (aids != null) {
-            for (String aid : aids) {
-                Set<String> fid = this.configuration.getBundleFeatureMap().get(aid);
-                if (fid != null)
-                    reqFeatures.addAll(fid);
+        Set<String> reqFeatures = getFeaturesForBundle(reqBundle);
+        for (String feature : reqFeatures) {
+            Set<String> fr = this.configuration.getFeatureRegionMap().get(feature);
+            if (fr != null) {
+                reqRegions.addAll(fr);
             }
-
-            for (String feature : reqFeatures) {
-                Set<String> fr = this.configuration.getFeatureRegionMap().get(feature);
-                if (fr != null) {
-                    reqRegions.addAll(fr);
-                }
-            }
-        } else {
-            // Bundle is not coming from a feature
         }
 
         Map<BundleCapability, String> coveredCaps = new HashMap<>();
-
         Map<BundleCapability, String> bcFeatureMap = new HashMap<>();
         String packageName = null;
         nextCapability:
@@ -109,25 +98,15 @@ class ResolverHookImpl implements ResolverHook {
                 continue nextCapability;
             }
 
-            String capBundleName = capBundle.getSymbolicName();
-            Version capBundleVersion = capBundle.getVersion();
-
-            List<String> capBundleArtifacts = this.configuration.getBsnVerMap().get(new AbstractMap.SimpleEntry<String, Version>(capBundleName, capBundleVersion));
-            if (capBundleArtifacts == null) {
+            Set<String> capFeatures = getFeaturesForBundle(capBundle);
+            if (capFeatures.isEmpty()) {
                 // Capability is not in any feature, everyone can access
                 coveredCaps.put(bc, RegionConstants.GLOBAL_REGION);
                 continue nextCapability;
             }
 
-            List<String> capFeatures = new ArrayList<>();
-            for (String ba : capBundleArtifacts) {
-                Set<String> capfeats = this.configuration.getBundleFeatureMap().get(ba);
-                if (capfeats != null)
-                    capFeatures.addAll(capfeats);
-            }
-
             if (capFeatures.isEmpty())
-                capFeatures = Collections.singletonList(null);
+                capFeatures = Collections.singleton(null);
 
             for (String capFeat : capFeatures) {
                 if (capFeat == null) {
@@ -263,6 +242,28 @@ class ResolverHookImpl implements ResolverHook {
                 it.remove();
             }
         }
+    }
+
+    Set<String> getFeaturesForBundle(Bundle bundle) {
+        return bundleLocationFeatureMap.computeIfAbsent(bundle.getLocation(),
+                l -> getFeaturesForBundleFromConfig(bundle));
+    }
+
+    private Set<String> getFeaturesForBundleFromConfig(Bundle bundle) {
+        Set<String> newSet = new HashSet<>();
+        String bundleName = bundle.getSymbolicName();
+        Version bundleVersion = bundle.getVersion();
+        List<String> aids = this.configuration.getBsnVerMap().get(
+                new AbstractMap.SimpleEntry<String, Version>(bundleName, bundleVersion));
+        if (aids != null) {
+            for (String aid : aids) {
+                Set<String> fid = this.configuration.getBundleFeatureMap().get(aid);
+                if (fid != null)
+                    newSet.addAll(fid);
+            }
+        }
+
+        return Collections.unmodifiableSet(newSet);
     }
 
     List<String> getRegionsForPackage(String packageName, String feature) {
