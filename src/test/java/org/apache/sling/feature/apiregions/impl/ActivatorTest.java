@@ -84,6 +84,7 @@ public class ActivatorTest {
         expectedProps.put(REGION_PACKAGE_FILENAME, new File(r).toURI().toString());
 
         BundleContext bc = Mockito.mock(BundleContext.class);
+        Mockito.when(bc.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(bc.getProperty(Activator.REGIONS_PROPERTY_NAME)).thenReturn("*");
         Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).
             thenReturn(i);

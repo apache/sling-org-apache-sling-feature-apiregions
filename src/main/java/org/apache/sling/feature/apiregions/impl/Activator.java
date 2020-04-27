@@ -71,6 +71,10 @@ public class Activator implements BundleActivator, FrameworkListener {
     @Override
     public synchronized void stop(BundleContext context) throws Exception {
         // All services automatically get unregistered by the framework.
+
+        if (configuration != null) {
+            configuration.storePersistedConfiguration(context);
+        }
     }
 
     private void createConfiguration() {

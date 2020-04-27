@@ -28,8 +28,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 
 import org.osgi.framework.Bundle;
@@ -42,7 +40,6 @@ import org.osgi.framework.wiring.BundleRevision;
 
 class ResolverHookImpl implements ResolverHook {
 
-    final ConcurrentMap<String, Set<String>> bundleLocationFeatureMap = new ConcurrentHashMap<>();
     final RegionConfiguration configuration;
 
     ResolverHookImpl(RegionConfiguration cfg) {
@@ -245,8 +242,8 @@ class ResolverHookImpl implements ResolverHook {
     }
 
     Set<String> getFeaturesForBundle(Bundle bundle) {
-        return bundleLocationFeatureMap.computeIfAbsent(bundle.getLocation(),
-                l -> getFeaturesForBundleFromConfig(bundle));
+        return this.configuration.getBundleLocationFeatureMap()
+                .computeIfAbsent(bundle.getLocation(), l -> getFeaturesForBundleFromConfig(bundle));
     }
 
     private Set<String> getFeaturesForBundleFromConfig(Bundle bundle) {
