@@ -18,9 +18,14 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.AbstractMap;
@@ -39,12 +44,15 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
 
 class RegionConfiguration {
-
+    private static final String BUNDLE_LOCATION_TO_FEATURE_FILE = "bundleLocationToFeature.properties";
 
     volatile Map<Map.Entry<String, Version>, List<String>> bsnVerMap;
     volatile Map<String, Set<String>> bundleFeatureMap;
@@ -61,6 +69,13 @@ class RegionConfiguration {
     private final Map<String, Set<String>> baseBundleFeatureMap;
     private final Map<String, Set<String>> baseFeatureRegionMap;
     private final Map<String, Set<String>> baseRegionPackageMap;
+
+    // This field stores the association between bundle location and features.
+    // It is populated dynamically as bundles are getting resolved. If a feature
+    // cannot be found for a location, it is looked up through the other maps in
+    // this class.
+    private final ConcurrentMap<String, Set<String>> bundleLocationFeatureMap =
+            new ConcurrentHashMap<>();
 
     private final String toGlobalConfig;
 
@@ -128,7 +143,60 @@ class RegionConfiguration {
             defaultRegions = Collections.emptySet();
         }
 
+        loadLocationToFeatureMap(context);
         updateConfiguration();
+    }
+
+    private void loadLocationToFeatureMap(BundleContext context) {
+        File file = context.getBundle().getDataFile(BUNDLE_LOCATION_TO_FEATURE_FILE);
+
+        if (file != null && file.exists()) {
+            Properties p = new Properties();
+            try (InputStream is = new BufferedInputStream(new FileInputStream(file))) {
+                p.load(is);
+            } catch (IOException e) {
+                Activator.LOG.log(Level.WARNING, "Unable to load " + BUNDLE_LOCATION_TO_FEATURE_FILE, e);
+            }
+
+            for (String k : p.stringPropertyNames()) {
+                bundleLocationFeatureMap.put(k, stringToSetOfString(p.getProperty(k)));
+            }
+        }
+    }
+
+    void storePersistedConfiguration(BundleContext context) {
+        File file = context.getBundle().getDataFile(BUNDLE_LOCATION_TO_FEATURE_FILE);
+        if (file == null) {
+            Activator.LOG.warning("Cannot store " + BUNDLE_LOCATION_TO_FEATURE_FILE
+                    + " Persistence not supported by this framework.");
+            return;
+        }
+
+        Properties p = new Properties();
+        for (Map.Entry<String, Set<String>> entry : bundleLocationFeatureMap.entrySet()) {
+            p.setProperty(entry.getKey(),
+                    entry.getValue().stream().collect(Collectors.joining(",")));
+        }
+        if (p.size() > 0) {
+            try (OutputStream os = new BufferedOutputStream(new FileOutputStream(file))) {
+                p.store(os, "Bundle Location to Feature Map");
+            } catch (IOException e) {
+                Activator.LOG.log(Level.WARNING, "Unable to store " + BUNDLE_LOCATION_TO_FEATURE_FILE, e);
+            }
+        }
+    }
+
+    private Set<String> stringToSetOfString(String prop) {
+        Set<String> res = new HashSet<>();
+
+        for (String s : prop.split(",")) {
+            String ts = s.trim();
+            if (ts.length() > 0) {
+                res.add(ts);
+            }
+        }
+
+        return res;
     }
 
     private synchronized void updateConfiguration() {
@@ -337,6 +405,17 @@ class RegionConfiguration {
 
     public Map<Map.Entry<String, Version>, List<String>> getBsnVerMap() {
         return bsnVerMap;
+    }
+
+    /**
+     * Obtain a mutable concurrent map that contains an association between
+     * bundle location and features. This map is persisted in bundle private
+     * storage. Initially this map is empty but as more bundles get resolved
+     * this map is gradually filled in.
+     * @return The bundle location to features map.
+     */
+    public ConcurrentMap<String, Set<String>> getBundleLocationFeatureMap() {
+        return bundleLocationFeatureMap;
     }
 
     public Map<String, Set<String>> getBundleFeatureMap() {

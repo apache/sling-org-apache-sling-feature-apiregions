@@ -44,9 +44,11 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
 import org.osgi.framework.hooks.resolver.ResolverHook;
@@ -69,6 +71,7 @@ public class RegionConfigurationTest {
         String e = getClass().getResource("/empty.properties").toURI().toString();
         String f = getClass().getResource("/idbsnver1.properties").toURI().toString();
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(f);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(e);
@@ -88,6 +91,7 @@ public class RegionConfigurationTest {
         String e = getClass().getResource("/empty.properties").toURI().toString();
         String f = getClass().getResource("/idbsnver1.properties").toURI().toString();
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(f);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(e);
@@ -119,6 +123,7 @@ public class RegionConfigurationTest {
         String e = getClass().getResource("/empty.properties").toURI().toString();
         String f = getClass().getResource("/bundles1.properties").toURI().toString();
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(f);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(e);
@@ -140,6 +145,7 @@ public class RegionConfigurationTest {
         String e = getClass().getResource("/empty.properties").toURI().toString();
         String f = getClass().getResource("/bundles1.properties").toURI().toString();
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(f);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(e);
@@ -175,6 +181,7 @@ public class RegionConfigurationTest {
         String e = getClass().getResource("/empty.properties").toURI().toString();
         String f = getClass().getResource("/features1.properties").toURI().toString();
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(f);
@@ -194,6 +201,7 @@ public class RegionConfigurationTest {
         String e = getClass().getResource("/empty.properties").toURI().toString();
         String f = getClass().getResource("/features1.properties").toURI().toString();
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(f);
@@ -225,6 +233,7 @@ public class RegionConfigurationTest {
         String e = getClass().getResource("/empty.properties").toURI().toString();
         String f = getClass().getResource("/regions1.properties").toURI().toString();
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(e);
@@ -244,6 +253,7 @@ public class RegionConfigurationTest {
         String e = getClass().getResource("/empty.properties").toURI().toString();
         String f = getClass().getResource("/regions1.properties").toURI().toString();
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(e);
@@ -273,6 +283,7 @@ public class RegionConfigurationTest {
         String e = getClass().getResource("/empty.properties").toURI().toString();
         String f = getClass().getResource("/regions2.properties").toURI().toString();
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(APIREGIONS_JOINGLOBAL)).thenReturn("obsolete,deprecated");
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(e);
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(e);
@@ -288,6 +299,7 @@ public class RegionConfigurationTest {
     @Test
     public void testBegin() throws Exception {
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).
             thenReturn(getClass().getResource("/idbsnver1.properties").toURI().toString());
         Mockito.when(ctx.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).
@@ -313,6 +325,7 @@ public class RegionConfigurationTest {
     @Test
     public void testURLs() throws Exception {
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         String location = new File(getClass().getResource("/props1/idbsnver.properties").
                 getFile()).getParentFile().toURI().toString();
         Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).thenReturn(location);
@@ -327,6 +340,7 @@ public class RegionConfigurationTest {
     @Test
     public void testClassloaderURLs() throws Exception {
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
             thenReturn("classloader://props1");
 
@@ -340,6 +354,7 @@ public class RegionConfigurationTest {
     @Test
     public void testOrderingOfRegionsInFeatures() throws Exception {
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
             thenReturn("classloader://props2");
 
@@ -351,6 +366,7 @@ public class RegionConfigurationTest {
     @Test
     public void testUnModifiableMaps() throws Exception {
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
             thenReturn("classloader://props1");
 
@@ -373,9 +389,39 @@ public class RegionConfigurationTest {
         testDefaultRegions(null, Collections.emptySet());
     }
 
+    @Test
+    public void testStoreLoadPersistedConfig() throws Exception {
+        File f = File.createTempFile("testStorePersistedConfig", ".tmp");
+
+        try {
+            Bundle bundle = Mockito.mock(Bundle.class);
+            Mockito.when(bundle.getDataFile("bundleLocationToFeature.properties"))
+                .thenReturn(f);
+
+            BundleContext ctx = Mockito.mock(BundleContext.class);
+            Mockito.when(ctx.getBundle()).thenReturn(bundle);
+            Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
+                thenReturn("classloader://props1");
+
+            RegionConfiguration cfg = new RegionConfiguration(ctx);
+
+            ConcurrentMap<String, Set<String>> m = cfg.getBundleLocationFeatureMap();
+            m.put("foo://bar", Collections.singleton("blah"));
+            m.put("foo://tar", new HashSet<>(Arrays.asList("a", "b", "c")));
+            cfg.storePersistedConfiguration(ctx);
+
+            RegionConfiguration cfg2 = new RegionConfiguration(ctx);
+            ConcurrentMap<String, Set<String>> m2 = cfg2.getBundleLocationFeatureMap();
+            assertEquals(m, m2);
+        } finally {
+            f.delete();
+        }
+    }
+
     private void testDefaultRegions(String defProp, Set<String> expected)
             throws IOException, URISyntaxException, NoSuchFieldException, IllegalAccessException {
         BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(ctx.getProperty(DEFAULT_REGIONS)).thenReturn(defProp);
         Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
         thenReturn("classloader://props1");
