@@ -18,6 +18,15 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.Version;
+import org.osgi.framework.namespace.PackageNamespace;
+import org.osgi.framework.wiring.BundleCapability;
+import org.osgi.framework.wiring.BundleRequirement;
+import org.osgi.framework.wiring.BundleRevision;
+
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,15 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.Version;
-import org.osgi.framework.namespace.PackageNamespace;
-import org.osgi.framework.wiring.BundleCapability;
-import org.osgi.framework.wiring.BundleRequirement;
-import org.osgi.framework.wiring.BundleRevision;
 
 import static org.junit.Assert.assertEquals;
 
@@ -575,27 +575,34 @@ public class ResolverHookImplTest {
     }
 
     @Test
-    public void testGetFeaturesForBundle() {
+    public void testGetFeaturesForBundleMultiSession() {
         String bsn = "foo";
         Version bver = new Version(1,2,3);
         String blocation = "something://foobar";
+
+        String bsn2 = "bar.bar";
+        Version bver2 = new Version(1,0,0);
 
         Map<Map.Entry<String, Version>, List<String>> bsnVerMap = new HashMap<>();
         Map<String, Set<String>> bundleFeatureMap = new HashMap<>();
         bsnVerMap.put(new AbstractMap.SimpleEntry<String, Version>(bsn, bver),
                 Collections.singletonList("myorg:foo:1.2.3"));
+        bsnVerMap.put(new AbstractMap.SimpleEntry<String, Version>(bsn2, bver2),
+                Collections.singletonList("myorg:bar.bar:1.0.0"));
         bundleFeatureMap.put("myorg:foo:1.2.3", new HashSet<>(Arrays.asList("feature1")));
+        bundleFeatureMap.put("myorg:bar.bar:1.0.0", new HashSet<>(
+                Arrays.asList("feature3", "feature4")));
 
         RegionConfiguration cfg = new RegionConfiguration(bsnVerMap, bundleFeatureMap,
                 Collections.emptyMap(), Collections.emptyMap(), Collections.emptySet());
 
-
-        ResolverHookImpl rhi = new ResolverHookImpl(cfg);
+        RegionEnforcer re = new RegionEnforcer(cfg);
 
         Bundle b = Mockito.mock(Bundle.class);
         Mockito.when(b.getSymbolicName()).thenReturn(bsn);
         Mockito.when(b.getVersion()).thenReturn(bver);
         Mockito.when(b.getLocation()).thenReturn(blocation);
+        ResolverHookImpl rhi = (ResolverHookImpl) re.begin(Collections.emptySet());
         Set<String> features = rhi.getFeaturesForBundle(b);
 
         assertEquals(Collections.singleton("feature1"), features);
@@ -605,15 +612,28 @@ public class ResolverHookImplTest {
         Mockito.when(b2.getSymbolicName()).thenReturn(bsn);
         Mockito.when(b2.getVersion()).thenReturn(new Version(1,4,0));
         Mockito.when(b2.getLocation()).thenReturn(blocation);
-        assertEquals(features, rhi.getFeaturesForBundle(b2));
+
+        // Obtain a new ResolverHookImpl to mimic multiple resolve sessions
+        ResolverHookImpl rhi2 = (ResolverHookImpl) re.begin(Collections.emptySet());
+        assertEquals(features, rhi2.getFeaturesForBundle(b2));
 
         // Try a bundle with the same bsn+version but different location
         Bundle b3 = Mockito.mock(Bundle.class);
         Mockito.when(b3.getSymbolicName()).thenReturn(bsn);
         Mockito.when(b3.getVersion()).thenReturn(bver);
         Mockito.when(b3.getLocation()).thenReturn("something://foobar2");
-        assertEquals(features, rhi.getFeaturesForBundle(b3));
+        ResolverHookImpl rhi3 = (ResolverHookImpl) re.begin(Collections.emptySet());
+        assertEquals(features, rhi3.getFeaturesForBundle(b3));
 
+        // Try a bundle with a different bsn+version and a different location
+        Bundle b4 = Mockito.mock(Bundle.class);
+        Mockito.when(b4.getSymbolicName()).thenReturn(bsn2);
+        Mockito.when(b4.getVersion()).thenReturn(bver2);
+        Mockito.when(b4.getLocation()).thenReturn("another://location");
+
+        Set<String> expected = new HashSet<>(Arrays.asList("feature3", "feature4"));
+        ResolverHookImpl rhi4 = (ResolverHookImpl) re.begin(Collections.emptySet());
+        assertEquals(expected, rhi4.getFeaturesForBundle(b4));
     }
 
     private BundleCapability mockCapability(String pkgName, String bid, Map<Entry<String, Version>, List<String>> bsnvermap) {
