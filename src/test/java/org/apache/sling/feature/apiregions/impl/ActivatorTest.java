@@ -72,16 +72,16 @@ public class ActivatorTest {
 
     @Test
     public void testStart() throws Exception {
-        String i = getClass().getResource("/idbsnver1.properties").getFile();
-        String b = getClass().getResource("/bundles1.properties").getFile();
-        String f = getClass().getResource("/features1.properties").getFile();
-        String r = getClass().getResource("/regions1.properties").getFile();
+        String i = getClass().getResource("/idbsnver1.properties").toURI().toString();
+        String b = getClass().getResource("/bundles1.properties").toURI().toString();
+        String f = getClass().getResource("/features1.properties").toURI().toString();
+        String r = getClass().getResource("/regions1.properties").toURI().toString();
 
         Dictionary<String, Object> expectedProps = new Hashtable<>();
-        expectedProps.put(IDBSNVER_FILENAME, new File(i).toURI().toString());
-        expectedProps.put(BUNDLE_FEATURE_FILENAME, new File(b).toURI().toString());
-        expectedProps.put(FEATURE_REGION_FILENAME, new File(f).toURI().toString());
-        expectedProps.put(REGION_PACKAGE_FILENAME, new File(r).toURI().toString());
+        expectedProps.put(IDBSNVER_FILENAME, i);
+        expectedProps.put(BUNDLE_FEATURE_FILENAME, b);
+        expectedProps.put(FEATURE_REGION_FILENAME, f);
+        expectedProps.put(REGION_PACKAGE_FILENAME, r);
 
         BundleContext bc = Mockito.mock(BundleContext.class);
         Mockito.when(bc.getBundle()).thenReturn(Mockito.mock(Bundle.class));
