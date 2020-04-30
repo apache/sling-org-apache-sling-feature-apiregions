@@ -18,6 +18,7 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -34,6 +35,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.framework.FrameworkEvent;
 import org.osgi.framework.FrameworkListener;
+import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.hooks.resolver.ResolverHookFactory;
 import org.osgi.framework.namespace.PackageNamespace;
@@ -41,11 +43,16 @@ import org.osgi.framework.wiring.BundleCapability;
 import org.osgi.framework.wiring.FrameworkWiring;
 import org.osgi.resource.Requirement;
 import org.osgi.resource.Resource;
+import org.osgi.util.tracker.ServiceTracker;
+import org.osgi.util.tracker.ServiceTrackerCustomizer;
 
 public class Activator implements BundleActivator, FrameworkListener {
-    static final String MANAGED_SERVICE_PKG_NAME = "org.osgi.service.cm";
-    static final String MANAGED_SERVICE_CLASS_NAME = MANAGED_SERVICE_PKG_NAME + ".ManagedService";
-    static final String MANAGED_SERVICE_FACTORY_CLASS_NAME = MANAGED_SERVICE_PKG_NAME + ".ManagedServiceFactory";
+    static final String CONFIG_ADMIN_PKG_NAME = "org.osgi.service.cm";
+    static final String MANAGED_SERVICE_CLASS_NAME = CONFIG_ADMIN_PKG_NAME + ".ManagedService";
+    static final String CONFIG_ADMIN_CLASS_NAME = CONFIG_ADMIN_PKG_NAME + ".ConfigurationAdmin";
+    static final String CFG_LISTENER_CLASS_NAME = CONFIG_ADMIN_PKG_NAME + ".SynchronousConfigurationListener";
+    static final String CFG_EVENT_CLASS_NAME = CONFIG_ADMIN_PKG_NAME + ".ConfigurationEvent";
+    static final String CFG_CLASS_NAME = CONFIG_ADMIN_PKG_NAME + ".Configuration";
     static final String FACTORY_PID = "org.apache.sling.feature.apiregions.factory";
 
     static final String REGIONS_PROPERTY_NAME = "org.apache.sling.feature.apiregions.regions";
@@ -57,6 +64,8 @@ public class Activator implements BundleActivator, FrameworkListener {
 
     RegionConfiguration configuration;
 
+    ServiceTracker<Object, Object> configAdminTracker;
+
     @Override
     public synchronized void start(BundleContext context) throws Exception {
         bundleContext = context;
@@ -64,6 +73,31 @@ public class Activator implements BundleActivator, FrameworkListener {
         createConfiguration();
 
         registerHook();
+
+        this.configAdminTracker = new ServiceTracker<>(context, CONFIG_ADMIN_CLASS_NAME, new ServiceTrackerCustomizer<Object, Object>() {
+
+            @Override
+            public Object addingService(final ServiceReference<Object> reference) {
+                final Object cfgAdmin = bundleContext.getService(reference);
+                if ( cfgAdmin != null ) {
+                    return registerConfigurationListener(cfgAdmin);
+                }
+                return null;
+            }
+
+            @Override
+            public void modifiedService(final ServiceReference<Object> reference, final Object reg) {
+                // ignore
+            }
+
+            @Override
+            public void removedService(final ServiceReference<Object> reference, final Object reg) {
+                if ( reg != null ) {
+                    ((ServiceRegistration<?>)reg).unregister();
+                }
+            }
+        });
+        this.configAdminTracker.open();
 
         context.addFrameworkListener(this);
     }
@@ -74,6 +108,9 @@ public class Activator implements BundleActivator, FrameworkListener {
 
         if (configuration != null) {
             configuration.storePersistedConfiguration(context);
+        }
+        if ( this.configAdminTracker != null ) {
+            this.configAdminTracker.close();
         }
     }
 
@@ -122,7 +159,7 @@ public class Activator implements BundleActivator, FrameworkListener {
             // Because this fragment is a framework extension, we need to use the wiring API to find the CM API.
             Collection<BundleCapability> providers = fw.findProviders(cmReq);
             for (BundleCapability cap : providers) {
-                if ( registerManagedService(cap) && registerManagedServiceFactory(cap)) {
+                if ( registerManagedService(cap)) {
                     break;
                 }
             }
@@ -179,11 +216,26 @@ public class Activator implements BundleActivator, FrameworkListener {
         return false;
     }
 
-    private boolean registerManagedServiceFactory(final BundleCapability cap) {
+    private ServiceRegistration<?> registerConfigurationListener(final Object cfgAdmin) {
         try {
-            ClassLoader loader = cap.getRevision().getWiring().getClassLoader();
-            Class<?> msClass = loader.loadClass(MANAGED_SERVICE_FACTORY_CLASS_NAME);
-            Object msf = Proxy.newProxyInstance(loader, new Class[] {msClass}, new InvocationHandler() {
+            final Class<?> listenerClass = cfgAdmin.getClass().getClassLoader().loadClass(CFG_LISTENER_CLASS_NAME);
+
+            // ConfigurationEvent
+            final Class<?> eventClass = cfgAdmin.getClass().getClassLoader().loadClass(CFG_EVENT_CLASS_NAME);
+            final Method eventGetTypeMethod = eventClass.getMethod("getType");
+            final Method eventGetFactoryPidMethod = eventClass.getDeclaredMethod("getFactoryPid");
+            final Method eventGetPidMethod = eventClass.getDeclaredMethod("getPid");
+
+            // ConfigurationAdmin
+            final Method caGetConfigMethod = cfgAdmin.getClass().getDeclaredMethod("getConfiguration", String.class, String.class);
+            final Method caListConfigcMethod = cfgAdmin.getClass().getDeclaredMethod("listConfigurations", String.class);
+
+            // Configuration
+            final Class<?> cfgClass = cfgAdmin.getClass().getClassLoader().loadClass(CFG_CLASS_NAME);
+            final Method cfgGetPropertiesMethod = cfgClass.getDeclaredMethod("getProperties");
+            final Method cfgGetPidMethod = cfgClass.getDeclaredMethod("getPid");
+
+            Object msf = Proxy.newProxyInstance(listenerClass.getClassLoader(), new Class[] {listenerClass}, new InvocationHandler() {
                 @Override
                 public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                     Class<?> mdDecl = method.getDeclaringClass();
@@ -194,35 +246,54 @@ public class Activator implements BundleActivator, FrameworkListener {
                             case "hashCode" :
                                 return System.identityHashCode(proxy);
                             case "toString" :
-                                return "Proxy for " + msClass;
+                                return "Proxy for " + listenerClass;
                             default :
                                 throw new UnsupportedOperationException("Method " + method
-                                    + " not supported on proxy for " + msClass);
+                                    + " not supported on proxy for " + listenerClass);
                         }
                     }
-                    if ("updated".equals(method.getName()) && args.length == 2) {
-                        final String pid = (String)args[0];
-                        @SuppressWarnings("unchecked")
-                        final Dictionary<String, Object> props = (Dictionary<String, Object>) args[1];
-                        configuration.setConfig(pid, props);
-                    } else if ("deleted".equals(method.getName()) && args.length == 1) {
-                        final String pid = (String)args[0];
-                        configuration.removeConfig(pid);
-                    } else if ("getName".equals(method.getName()) && args.length == 0 ) {
-                        return "Region Factory Configuration";
+                    if ("configurationEvent".equals(method.getName()) && args.length == 1) {
+                        // configuration event
+                        final Object event = args[0];
+
+                        // check factory pid first
+                        final String factoryPid = (String)eventGetFactoryPidMethod.invoke(event, (Object[])null);
+                        if ( FACTORY_PID.equals(factoryPid) ) {
+                            final String pid = (String)eventGetPidMethod.invoke(event, (Object[])null);
+                            final Object eventType = eventGetTypeMethod.invoke(event, (Object[])null);
+                            if (eventType.equals(1)) {
+                                // update
+                                final Object cfg = caGetConfigMethod.invoke(cfgAdmin, new Object[] {pid, null});
+                                @SuppressWarnings("unchecked")
+                                final Dictionary<String, Object> props = (Dictionary<String, Object>)cfgGetPropertiesMethod.invoke(cfg, (Object[])null);
+                                configuration.setConfig(pid, props);
+                            } else if ( eventType.equals(2)) {
+                                // delete
+                                configuration.removeConfig(pid);
+                            }
+                        }
                     }
                     return null;
                 }
             });
-            Dictionary<String, Object> props = new Hashtable<>();
-            props.put(Constants.SERVICE_PID, FACTORY_PID);
-            bundleContext.registerService(MANAGED_SERVICE_FACTORY_CLASS_NAME, msf, props);
+            final ServiceRegistration<?> reg = bundleContext.registerService(CFG_LISTENER_CLASS_NAME, msf, null);
+            // get existing configurations
+            final Object result = caListConfigcMethod.invoke(cfgAdmin, "(service.factoryPid= " + FACTORY_PID + ")");
+            if ( result != null ) {
+                for(int i=0; i<Array.getLength(result); i++) {
+                    final Object cfg = Array.get(result, i);
+                    final String pid = (String)cfgGetPidMethod.invoke(cfg, (Object[])null);
+                    @SuppressWarnings("unchecked")
+                    final Dictionary<String, Object> props = (Dictionary<String, Object>)cfgGetPropertiesMethod.invoke(cfg, (Object[])null);
+                    configuration.setConfig(pid, props);
+                }
+            }
+            return reg;
 
-            return true;
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Problem attempting to register ManagedServiceFactory from " + cap, e);
+            LOG.log(Level.SEVERE, "Problem attempting to register configuration lister for " + cfgAdmin, e);
         }
-        return false;
+        return null;
     }
 
     static Requirement createPackageRequirement() {
@@ -235,7 +306,7 @@ public class Activator implements BundleActivator, FrameworkListener {
             @Override
             public Map<String, String> getDirectives() {
                 return Collections.singletonMap("filter",
-                        "(" + PackageNamespace.PACKAGE_NAMESPACE + "=" + MANAGED_SERVICE_PKG_NAME + ")");
+                        "(" + PackageNamespace.PACKAGE_NAMESPACE + "=" + CONFIG_ADMIN_PKG_NAME + ")");
             }
 
             @Override
