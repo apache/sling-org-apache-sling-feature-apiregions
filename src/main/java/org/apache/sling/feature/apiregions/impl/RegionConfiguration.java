@@ -37,6 +37,7 @@ import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
 
@@ -61,8 +63,8 @@ class RegionConfiguration {
 
     final Set<String> defaultRegions;
 
+    private final BundleContext bundleContext;
     private final Dictionary<String, Object> regProps = new Hashtable<>();
-
     private final Map<String, Dictionary<String, Object>> factoryConfigs = new ConcurrentHashMap<>();
 
     private final Map<Map.Entry<String, Version>, List<String>> baseBsnVerMap;
@@ -81,6 +83,7 @@ class RegionConfiguration {
 
     RegionConfiguration(Map<Entry<String, Version>, List<String>> bsnVerMap, Map<String, Set<String>> bundleFeatureMap,
                         Map<String, Set<String>> featureRegionMap, Map<String, Set<String>> regionPackageMap, Set<String> defaultRegions) {
+        this.bundleContext = null;
         this.defaultRegions = defaultRegions;
 
         this.baseBsnVerMap = new HashMap<>(bsnVerMap);
@@ -95,6 +98,7 @@ class RegionConfiguration {
 
     RegionConfiguration(final BundleContext context)
             throws IOException, URISyntaxException {
+        this.bundleContext = context;
 
         URI idbsnverFile = getDataFileURI(context, RegionConstants.IDBSNVER_FILENAME);
         // Register the location as a service property for diagnostic purposes
@@ -214,43 +218,54 @@ class RegionConfiguration {
                     final String[] parts = val.split("=");
                     final String n = parts[0];
                     final String[] bsnver = parts[1].split("~");
-                    addBsnVerArtifact(bvm, bsnver[0], bsnver[1], n);
+                    String bsn = bsnver[0];
+                    String bver = bsnver[1];
+                    addBsnVerArtifact(bvm, bsn, bver, n);
+
+                    // remove the locations for the updated bundles from the location to feature cache
+                    for (Iterator<String> it = bundleLocationFeatureMap.keySet().iterator(); it.hasNext(); ) {
+                        String loc = it.next();
+                        Bundle b = bundleContext.getBundle(loc);
+                        if (b != null && bsn.equals(b.getSymbolicName()) && bver.equals(b.getVersion().toString())) {
+                            it.remove();
+                            break;
+                        }
+                    }
                 }
             }
 
             // bundle id to features
             valObj = props.get(RegionConstants.PROP_bundleFeatures);
             if ( valObj != null ) {
-                for(final String val : convert(valObj)) {
-                    final String[] parts = val.split("=");
-                    final String n = parts[0];
-                    final String[] features = parts[1].split(",");
-                    addValuesToMap(bfm, n, Arrays.asList(features));
+                List<String> updatedBundleIDs = handleMapConfig(valObj, bfm);
+
+                // remove the locations for the updated bundles from the location to feature cache
+                for (String updatedBundleID : updatedBundleIDs) {
+                    for (Iterator<String> it = bundleLocationFeatureMap.keySet().iterator(); it.hasNext(); ) {
+                        String loc = it.next();
+                        Bundle b = bundleContext.getBundle(loc);
+                        if (b != null) {
+                            List<String> bundleIDs = bvm.get(new AbstractMap.SimpleEntry<>(b.getSymbolicName(), b.getVersion()));
+                            if (bundleIDs != null && bundleIDs.contains(updatedBundleID)) {
+                                it.remove();
+                                break;
+                            }
+                        }
+                    }
                 }
             }
 
             // feature id to regions
             valObj = props.get(RegionConstants.PROP_featureRegions);
             if ( valObj != null ) {
-                for(final String val : convert(valObj)) {
-                    final String[] parts = val.split("=");
-                    final String n = parts[0];
-                    final String[] regions = parts[1].split(",");
-                    addValuesToMap(frm, n, Arrays.asList(regions));
-                }
+                handleMapConfig(valObj, frm);
             }
 
             // region to packages
             valObj = props.get(RegionConstants.PROP_regionPackage);
             if ( valObj != null ) {
-                for(final String val : convert(valObj)) {
-                    final String[] parts = val.split("=");
-                    final String n = parts[0];
-                    final String[] packages = parts[1].split(",");
-                    addValuesToMap(rpm, n, Arrays.asList(packages));
-                }
+                handleMapConfig(valObj, rpm);
             }
-
         }
 
         // join regions
@@ -263,7 +278,19 @@ class RegionConfiguration {
         bundleFeatureMap = unmodifiableMapToSet(bfm);
         featureRegionMap = unmodifiableMapToSet(frm);
         regionPackageMap = unmodifiableMapToSet(rpm);
+    }
 
+    private List<String> handleMapConfig(Object valObj, Map<String, Set<String>> map) {
+        List<String> keys = new ArrayList<>();
+
+        for(final String val : convert(valObj)) {
+            final String[] parts = val.split("=");
+            final String n = parts[0];
+            final String[] features = parts[1].split(",");
+            addValuesToMap(map, n, Arrays.asList(features));
+            keys.add(n);
+        }
+        return keys;
     }
 
     private static <K,V> Map<K, List<V>> cloneMapOfLists(Map<K, List<V>> m) {
@@ -334,7 +361,8 @@ class RegionConfiguration {
             l = new ArrayList<>();
             bsnVerMap.put(bsnVer, l);
         }
-        l.add(artifactId);
+        if (!l.contains(artifactId))
+            l.add(artifactId);
     }
 
     private static Map<String, Set<String>> populateBundleFeatureMap(URI bundlesFile) throws IOException {

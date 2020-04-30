@@ -30,6 +30,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.Version;
+import org.osgi.framework.hooks.resolver.ResolverHook;
+import org.osgi.framework.namespace.PackageNamespace;
+import org.osgi.framework.wiring.BundleCapability;
+import org.osgi.framework.wiring.BundleRequirement;
+import org.osgi.framework.wiring.BundleRevision;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -45,13 +56,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
-
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.Version;
-import org.osgi.framework.hooks.resolver.ResolverHook;
 
 public class RegionConfigurationTest {
     @Test
@@ -416,6 +420,125 @@ public class RegionConfigurationTest {
         } finally {
             f.delete();
         }
+    }
+
+    @Test
+    public void testUpdateLocationCacheOnConfigUpdate() throws Exception {
+        // Set up a typical configuration scenario
+
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
+        Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
+            thenReturn("classloader://props4");
+        RegionConfiguration cfg = new RegionConfiguration(ctx);
+
+        assertEquals(2, cfg.getBsnVerMap().size());
+        assertEquals(Collections.singletonList("g:b1:1"),
+                cfg.getBsnVerMap().get(new AbstractMap.SimpleEntry<>("b1", new Version(1,0,0))));
+        assertEquals(Collections.singletonList("g:b2:1.2.3"),
+                cfg.getBsnVerMap().get(new AbstractMap.SimpleEntry<>("b2", new Version(1,2,3))));
+
+        // Now start invoking the resolver hook, this should fill in some of the location cache
+        assertEquals("Precondition", 0, cfg.getBundleLocationFeatureMap().size());
+        ResolverHookImpl rhi = new ResolverHookImpl(cfg);
+
+        BundleRequirement req = mockRequirement("b1", new Version(1,0,0), ctx);
+        BundleCapability cap1 = mockCapability("b2", new Version(1,2,3), ctx);
+        BundleCapability cap2 = mockCapability("b4", new Version(9,9,9,"something"), ctx);
+
+        rhi.filterMatches(req, new ArrayList<>(Arrays.asList(cap1, cap2)));
+
+        // At this point the bundle location to feature map should have some cached info
+        assertEquals(3, cfg.getBundleLocationFeatureMap().size());
+        assertEquals(Collections.singleton("org.sling:something:1.2.3:slingosgifeature:myclassifier"),
+                cfg.getBundleLocationFeatureMap().get("http://b1"));
+        assertEquals(new HashSet<>(Arrays.asList(
+                "some.other:feature:123",
+                "org.sling:something:1.2.3:slingosgifeature:myclassifier")),
+                cfg.getBundleLocationFeatureMap().get("http://b2"));
+        assertEquals("At this point b4 is unknown to the configuration, so not part of a feature",
+                Collections.emptySet(),
+                cfg.getBundleLocationFeatureMap().get("http://b4"));
+
+
+        // Now update the configuration, there is new mappings for bundles b3 and b4 and
+        // the features of b2 have changed
+        Dictionary<String,Object> d = new Hashtable<>();
+        d.put("mapping.bundleid.bsnver",
+                new String[] {
+                        "g:b3:1.2=a.b3.c~1.2",
+                        "g:b4:9.9.9.something=b4~9.9.9.something"});
+        d.put("mapping.bundleid.features",
+                new String[] {
+                        "g:b4:9.9.9.something=some.other:feature:123",
+                        "g:b2:1.2.3=some.other:feature:123,org.sling:something:1.2.3:slingosgifeature:myclassifier,yet.another:feature:999"
+                });
+
+        cfg.setConfig("my.factory.pid", d);
+        assertEquals(4, cfg.getBsnVerMap().size());
+        assertEquals(Collections.singletonList("g:b1:1"),
+                cfg.getBsnVerMap().get(new AbstractMap.SimpleEntry<>("b1", new Version(1,0,0))));
+        assertEquals(Collections.singletonList("g:b2:1.2.3"),
+                cfg.getBsnVerMap().get(new AbstractMap.SimpleEntry<>("b2", new Version(1,2,3))));
+        assertEquals(Collections.singletonList("g:b3:1.2"),
+                cfg.getBsnVerMap().get(new AbstractMap.SimpleEntry<>("a.b3.c", new Version(1,2,0))));
+        assertEquals(Collections.singletonList("g:b4:9.9.9.something"),
+                cfg.getBsnVerMap().get(new AbstractMap.SimpleEntry<>("b4", new Version(9,9,9,"something"))));
+
+        // Check that the relevant bundle locations have been removed from the bundle location to feature cache
+        // The information for b4 should have been removed because it is now known and the information
+        // on b2 should have been removed as the feature set for b2 has changed
+        assertEquals(1, cfg.getBundleLocationFeatureMap().size());
+        assertEquals(Collections.singleton("org.sling:something:1.2.3:slingosgifeature:myclassifier"),
+                cfg.getBundleLocationFeatureMap().get("http://b1"));
+
+        // Redo a resolve action and check that the cache is now re-filled
+        rhi.filterMatches(req, new ArrayList<>(Arrays.asList(cap1, cap2)));
+        assertEquals(3, cfg.getBundleLocationFeatureMap().size());
+        assertEquals(Collections.singleton("org.sling:something:1.2.3:slingosgifeature:myclassifier"),
+                cfg.getBundleLocationFeatureMap().get("http://b1"));
+        assertEquals(new HashSet<>(Arrays.asList(
+                "some.other:feature:123",
+                "org.sling:something:1.2.3:slingosgifeature:myclassifier",
+                "yet.another:feature:999")),
+                cfg.getBundleLocationFeatureMap().get("http://b2"));
+        assertEquals(Collections.singleton("some.other:feature:123"),
+                cfg.getBundleLocationFeatureMap().get("http://b4"));
+    }
+
+    private BundleRequirement mockRequirement(String bsn, Version bver, BundleContext mockContext) {
+        BundleRevision br = mockBundleRevision(bsn, bver, mockContext);
+
+        BundleRequirement req = Mockito.mock(BundleRequirement.class);
+        Mockito.when(req.getRevision()).thenReturn(br);
+        Mockito.when(req.getNamespace()).thenReturn(PackageNamespace.PACKAGE_NAMESPACE);
+        return req;
+    }
+
+    private BundleCapability mockCapability(String bsn, Version bver, BundleContext mockContext) {
+        BundleRevision br = mockBundleRevision(bsn, bver, mockContext);
+
+        BundleCapability req = Mockito.mock(BundleCapability.class);
+        Mockito.when(req.getRevision()).thenReturn(br);
+        Mockito.when(req.getNamespace()).thenReturn(PackageNamespace.PACKAGE_NAMESPACE);
+        return req;
+    }
+
+    private BundleRevision mockBundleRevision(String bsn, Version bver, BundleContext mockContext) {
+        Bundle b = Mockito.mock(Bundle.class);
+        Mockito.when(b.getSymbolicName()).thenReturn(bsn);
+        Mockito.when(b.getVersion()).thenReturn(bver);
+        String bundleLocation = "http://" + bsn;
+        Mockito.when(b.getLocation()).thenReturn(bundleLocation);
+        Mockito.when(b.getBundleId()).thenReturn(System.currentTimeMillis()); // Just some random unique ID
+
+        BundleRevision br = Mockito.mock(BundleRevision.class);
+        Mockito.when(br.getBundle()).thenReturn(b);
+
+        // Make the bundlecontext aware...
+        Mockito.when(mockContext.getBundle(bundleLocation)).thenReturn(b);
+
+        return br;
     }
 
     private void testDefaultRegions(String defProp, Set<String> expected)

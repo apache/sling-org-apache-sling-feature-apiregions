@@ -68,6 +68,7 @@
                         <exclude>src/test/resources/props1/*</exclude>
                         <exclude>src/test/resources/props2/*</exclude>
                         <exclude>src/test/resources/props3/*</exclude>
+                        <exclude>src/test/resources/props4/*</exclude>
                     </excludes>
                 </configuration>
             </plugin>
