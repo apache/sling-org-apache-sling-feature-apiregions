@@ -46,7 +46,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
@@ -62,7 +61,6 @@ class RegionConfiguration {
     final Set<String> defaultRegions;
 
     private final Dictionary<String, Object> regProps = new Hashtable<>();
-
     private final Map<String, Dictionary<String, Object>> factoryConfigs = new ConcurrentHashMap<>();
 
     private final Map<Map.Entry<String, Version>, List<String>> baseBsnVerMap;
@@ -70,11 +68,11 @@ class RegionConfiguration {
     private final Map<String, Set<String>> baseFeatureRegionMap;
     private final Map<String, Set<String>> baseRegionPackageMap;
 
-    // This field stores the association between bundle location and features.
-    // It is populated dynamically as bundles are getting resolved. If a feature
-    // cannot be found for a location, it is looked up through the other maps in
-    // this class.
-    private final ConcurrentMap<String, Set<String>> bundleLocationFeatureMap =
+    // This field stores the association between bundle location and the configuration
+    // to be used. The configuration is based on bsn+version. If the bundle is updated
+    // the original bsn+version associated with the location still needs to be used.
+    // It is populated dynamically as bundles are getting resolved.
+    private final ConcurrentMap<String, Map.Entry<String, Version>> bundleLocationConfigMap =
             new ConcurrentHashMap<>();
 
     private final String toGlobalConfig;
@@ -95,7 +93,6 @@ class RegionConfiguration {
 
     RegionConfiguration(final BundleContext context)
             throws IOException, URISyntaxException {
-
         URI idbsnverFile = getDataFileURI(context, RegionConstants.IDBSNVER_FILENAME);
         // Register the location as a service property for diagnostic purposes
         regProps.put(RegionConstants.IDBSNVER_FILENAME, idbsnverFile.toString());
@@ -143,11 +140,11 @@ class RegionConfiguration {
             defaultRegions = Collections.emptySet();
         }
 
-        loadLocationToFeatureMap(context);
+        loadLocationToConfigMap(context);
         updateConfiguration();
     }
 
-    private void loadLocationToFeatureMap(BundleContext context) {
+    private void loadLocationToConfigMap(BundleContext context) {
         File file = context.getBundle().getDataFile(BUNDLE_LOCATION_TO_FEATURE_FILE);
 
         if (file != null && file.exists()) {
@@ -159,12 +156,33 @@ class RegionConfiguration {
             }
 
             for (String k : p.stringPropertyNames()) {
-                bundleLocationFeatureMap.put(k, stringToSetOfString(p.getProperty(k)));
+                Map.Entry<String, Version> bsnver = parseBSNVer(p.getProperty(k));
+                if (bsnver != null) {
+                    bundleLocationConfigMap.put(k, bsnver);
+                }
             }
         }
     }
 
-    void storePersistedConfiguration(BundleContext context) {
+    private Map.Entry<String, Version> parseBSNVer(String val) {
+        String[] bsnver = val.split("~");
+        if (bsnver.length == 2) {
+            String bsn = bsnver[0].trim();
+            Version ver = null;
+            try {
+                ver = Version.parseVersion(bsnver[1].trim());
+            } catch (Exception e) {
+                Activator.LOG.log(Level.WARNING, "Problem parsing " + BUNDLE_LOCATION_TO_FEATURE_FILE, e);
+            }
+
+            if (ver != null) {
+                return new AbstractMap.SimpleEntry<String,Version>(bsn, ver);
+            }
+        }
+        return null;
+    }
+
+    void storeLocationToConfigMap(BundleContext context) {
         File file = context.getBundle().getDataFile(BUNDLE_LOCATION_TO_FEATURE_FILE);
         if (file == null) {
             Activator.LOG.warning("Cannot store " + BUNDLE_LOCATION_TO_FEATURE_FILE
@@ -173,9 +191,8 @@ class RegionConfiguration {
         }
 
         Properties p = new Properties();
-        for (Map.Entry<String, Set<String>> entry : bundleLocationFeatureMap.entrySet()) {
-            p.setProperty(entry.getKey(),
-                    entry.getValue().stream().collect(Collectors.joining(",")));
+        for (Map.Entry<String, Map.Entry<String, Version>> entry : bundleLocationConfigMap.entrySet()) {
+            p.setProperty(entry.getKey(), entry.getValue().getKey() + "~" + entry.getValue().getValue());
         }
         if (p.size() > 0) {
             try (OutputStream os = new BufferedOutputStream(new FileOutputStream(file))) {
@@ -184,19 +201,6 @@ class RegionConfiguration {
                 Activator.LOG.log(Level.WARNING, "Unable to store " + BUNDLE_LOCATION_TO_FEATURE_FILE, e);
             }
         }
-    }
-
-    private Set<String> stringToSetOfString(String prop) {
-        Set<String> res = new HashSet<>();
-
-        for (String s : prop.split(",")) {
-            String ts = s.trim();
-            if (ts.length() > 0) {
-                res.add(ts);
-            }
-        }
-
-        return res;
     }
 
     private synchronized void updateConfiguration() {
@@ -214,43 +218,29 @@ class RegionConfiguration {
                     final String[] parts = val.split("=");
                     final String n = parts[0];
                     final String[] bsnver = parts[1].split("~");
-                    addBsnVerArtifact(bvm, bsnver[0], bsnver[1], n);
+                    String bsn = bsnver[0];
+                    String bver = bsnver[1];
+                    addBsnVerArtifact(bvm, bsn, bver, n);
                 }
             }
 
             // bundle id to features
             valObj = props.get(RegionConstants.PROP_bundleFeatures);
             if ( valObj != null ) {
-                for(final String val : convert(valObj)) {
-                    final String[] parts = val.split("=");
-                    final String n = parts[0];
-                    final String[] features = parts[1].split(",");
-                    addValuesToMap(bfm, n, Arrays.asList(features));
-                }
+                handleMapConfig(valObj, bfm);
             }
 
             // feature id to regions
             valObj = props.get(RegionConstants.PROP_featureRegions);
             if ( valObj != null ) {
-                for(final String val : convert(valObj)) {
-                    final String[] parts = val.split("=");
-                    final String n = parts[0];
-                    final String[] regions = parts[1].split(",");
-                    addValuesToMap(frm, n, Arrays.asList(regions));
-                }
+                handleMapConfig(valObj, frm);
             }
 
             // region to packages
             valObj = props.get(RegionConstants.PROP_regionPackage);
             if ( valObj != null ) {
-                for(final String val : convert(valObj)) {
-                    final String[] parts = val.split("=");
-                    final String n = parts[0];
-                    final String[] packages = parts[1].split(",");
-                    addValuesToMap(rpm, n, Arrays.asList(packages));
-                }
+                handleMapConfig(valObj, rpm);
             }
-
         }
 
         // join regions
@@ -263,7 +253,15 @@ class RegionConfiguration {
         bundleFeatureMap = unmodifiableMapToSet(bfm);
         featureRegionMap = unmodifiableMapToSet(frm);
         regionPackageMap = unmodifiableMapToSet(rpm);
+    }
 
+    private void handleMapConfig(Object valObj, Map<String, Set<String>> map) {
+        for(final String val : convert(valObj)) {
+            final String[] parts = val.split("=");
+            final String n = parts[0];
+            final String[] features = parts[1].split(",");
+            addValuesToMap(map, n, Arrays.asList(features));
+        }
     }
 
     private static <K,V> Map<K, List<V>> cloneMapOfLists(Map<K, List<V>> m) {
@@ -334,7 +332,8 @@ class RegionConfiguration {
             l = new ArrayList<>();
             bsnVerMap.put(bsnVer, l);
         }
-        l.add(artifactId);
+        if (!l.contains(artifactId))
+            l.add(artifactId);
     }
 
     private static Map<String, Set<String>> populateBundleFeatureMap(URI bundlesFile) throws IOException {
@@ -409,13 +408,20 @@ class RegionConfiguration {
 
     /**
      * Obtain a mutable concurrent map that contains an association between
-     * bundle location and features. This map is persisted in bundle private
+     * bundle location and their configuration, which is the original
+     * Symbolic Name and Version. This map is persisted in bundle private
      * storage. Initially this map is empty but as more bundles get resolved
-     * this map is gradually filled in.
-     * @return The bundle location to features map.
+     * this map is gradually filled in. <p>
+     *
+     * This map is used to find the API Regions information for a bundle even
+     * if the bundle is updated at some point. After the update the location
+     * will still be the same, so the original configuration can be found by
+     * looking up the original bsn+version associated with the location. That's
+     * what this method enables.
+     * @return The bundle location to bsnver map.
      */
-    public ConcurrentMap<String, Set<String>> getBundleLocationFeatureMap() {
-        return bundleLocationFeatureMap;
+    public ConcurrentMap<String, Map.Entry<String, Version>> getBundleLocationConfigMap() {
+        return bundleLocationConfigMap;
     }
 
     public Map<String, Set<String>> getBundleFeatureMap() {
