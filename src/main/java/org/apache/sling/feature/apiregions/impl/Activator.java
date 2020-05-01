@@ -107,7 +107,7 @@ public class Activator implements BundleActivator, FrameworkListener {
         // All services automatically get unregistered by the framework.
 
         if (configuration != null) {
-            configuration.storePersistedConfiguration(context);
+            configuration.storeLocationToConfigMap(context);
         }
         if ( this.configAdminTracker != null ) {
             this.configAdminTracker.close();

@@ -242,14 +242,18 @@ class ResolverHookImpl implements ResolverHook {
     }
 
     Set<String> getFeaturesForBundle(Bundle bundle) {
-        return this.configuration.getBundleLocationFeatureMap()
-                .computeIfAbsent(bundle.getLocation(), l -> getFeaturesForBundleFromConfig(bundle));
+        // Look up the bsn and bundle version initially associated with the location. If the bundle
+        // for the specified location was later updated, the initial bsn+version is still used to look up the
+        // api regions configuration
+        Map.Entry<String, Version> bsnVer = this.configuration.getBundleLocationConfigMap()
+                .computeIfAbsent(bundle.getLocation(), l -> new AbstractMap.SimpleEntry<>(
+                        bundle.getSymbolicName(), bundle.getVersion()));
+
+        return getFeaturesForBundleFromConfig(bsnVer.getKey(), bsnVer.getValue());
     }
 
-    private Set<String> getFeaturesForBundleFromConfig(Bundle bundle) {
+    private Set<String> getFeaturesForBundleFromConfig(String bundleName, Version bundleVersion) {
         Set<String> newSet = new HashSet<>();
-        String bundleName = bundle.getSymbolicName();
-        Version bundleVersion = bundle.getVersion();
         List<String> aids = this.configuration.getBsnVerMap().get(
                 new AbstractMap.SimpleEntry<String, Version>(bundleName, bundleVersion));
         if (aids != null) {
