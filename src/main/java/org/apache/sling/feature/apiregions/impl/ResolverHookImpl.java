@@ -102,16 +102,7 @@ class ResolverHookImpl implements ResolverHook {
                 continue nextCapability;
             }
 
-            if (capFeatures.isEmpty())
-                capFeatures = Collections.singleton(null);
-
             for (String capFeat : capFeatures) {
-                if (capFeat == null) {
-                    // everyone can access capability not coming from a feature
-                    coveredCaps.put(bc, RegionConstants.GLOBAL_REGION);
-                    continue nextCapability;
-                }
-
                 if (reqFeatures.contains(capFeat)) {
                     // Within a single feature everything can wire to everything else
                     coveredCaps.put(bc, null); // null value means same bundle, same feature or system bundle
