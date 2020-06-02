@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.Version;
@@ -160,9 +161,15 @@ class ResolverHookImpl implements ResolverHook {
         // Remove any capabilities that are not covered
         candidates.retainAll(coveredCaps.keySet());
 
+        Level logLevel;
         if (candidates.isEmpty()) {
-            removedCandidates.removeAll(candidates);
+            logLevel = Level.WARNING;
+        } else {
+            logLevel = Level.INFO;
+        }
+        removedCandidates.removeAll(candidates);
 
+        if (!removedCandidates.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             boolean first = true;
             for (BundleCapability bc : removedCandidates) {
@@ -180,7 +187,7 @@ class ResolverHookImpl implements ResolverHook {
                 sb.append("]");
             }
 
-            Activator.LOG.log(Level.WARNING,
+            Activator.LOG.log(logLevel,
                     "API-Regions removed candidates {0} for requirement {1} as the requirement is in the following regions: {2} and in feature: {3}",
                     new Object[] {sb, requirement, reqRegions, reqFeatures});
         }
@@ -235,8 +242,14 @@ class ResolverHookImpl implements ResolverHook {
         // There are specific capabilities, therefore we should remove the Global region is any from the capabilities
         // We have collected the capabilities we want to keep in specificCaps
         for (Iterator<BundleCapability> it = capMap.keySet().iterator(); it.hasNext(); ) {
-            if (!specificCaps.contains(it.next())) {
+            BundleCapability cap = it.next();
+            if (!specificCaps.contains(cap)) {
                 it.remove();
+                Activator.LOG.log(Level.INFO, "Removing candidate {0} which is in region {1} as more specific candidates are available in regions {2}",
+                        new Object[] {
+                                cap, capMap.get(cap),
+                                specificCaps.stream().map(c -> "" + c + " region " + capMap.get(c)).collect(Collectors.joining("/"))
+                        });
             }
         }
     }
