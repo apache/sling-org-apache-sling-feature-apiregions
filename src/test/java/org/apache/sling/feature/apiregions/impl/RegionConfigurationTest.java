@@ -443,8 +443,8 @@ public class RegionConfigurationTest {
         ResolverHookImpl rhi = new ResolverHookImpl(cfg);
 
         BundleRequirement req = mockRequirement("b4", new Version(9,9,9,"something"), ctx);
-        BundleCapability cap1 = mockCapability("b1", new Version(1,0,0), ctx);
-        BundleCapability cap2 = mockCapability("b2", new Version(1,2,3), ctx);
+        BundleCapability cap1 = mockCapability("org.foo.bar", "b1", new Version(1,0,0), ctx);
+        BundleCapability cap2 = mockCapability("org.foo.bar", "b2", new Version(1,2,3), ctx);
 
         ArrayList<BundleCapability> caps1 = new ArrayList<>(Arrays.asList(cap1, cap2));
         rhi.filterMatches(req, caps1);
@@ -502,13 +502,17 @@ public class RegionConfigurationTest {
         return req;
     }
 
-    private BundleCapability mockCapability(String bsn, Version bver, BundleContext mockContext) {
+    private BundleCapability mockCapability(String pkg, String bsn, Version bver, BundleContext mockContext) {
+        Map<String, Object> attrs =
+                Collections.<String, Object>singletonMap(PackageNamespace.PACKAGE_NAMESPACE, pkg);
+
         BundleRevision br = mockBundleRevision(bsn, bver, mockContext);
 
-        BundleCapability req = Mockito.mock(BundleCapability.class);
-        Mockito.when(req.getRevision()).thenReturn(br);
-        Mockito.when(req.getNamespace()).thenReturn(PackageNamespace.PACKAGE_NAMESPACE);
-        return req;
+        BundleCapability cap = Mockito.mock(BundleCapability.class);
+        Mockito.when(cap.getRevision()).thenReturn(br);
+        Mockito.when(cap.getAttributes()).thenReturn(attrs);
+        Mockito.when(cap.getNamespace()).thenReturn(PackageNamespace.PACKAGE_NAMESPACE);
+        return cap;
     }
 
     private BundleRevision mockBundleRevision(String bsn, Version bver, BundleContext mockContext) {
