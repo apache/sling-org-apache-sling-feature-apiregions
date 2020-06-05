@@ -63,7 +63,7 @@ class ResolverHookImpl implements ResolverHook {
         if (!PackageNamespace.PACKAGE_NAMESPACE.equals(requirement.getNamespace()))
             return;
 
-        if (candidates.size() < 1)
+        if (candidates.isEmpty())
             return;
 
         Object pkg = candidates.iterator().next().getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE);
@@ -108,7 +108,7 @@ class ResolverHookImpl implements ResolverHook {
                 // always allow capability from same bundle
 
                 // Here we cover the case where the bundle is not in any feature which means that the package is in the 'global' region,
-                // however if the bundle is in a feature then it could be marked as more specific, with a 'null value', which may 
+                // however if the bundle is in a feature then it could be marked as more specific, with a 'null value', which may
                 // happen below.
                 coveredCaps.put(bc, RegionConstants.GLOBAL_REGION);
 
@@ -208,12 +208,10 @@ class ResolverHookImpl implements ResolverHook {
      */
     private boolean isInGlobalRegion(String packageName, String capFeat) {
         Set<String> capRegions = this.configuration.getFeatureRegionMap().get(capFeat);
-        if (capRegions != null) {
-            if (capRegions.contains(RegionConstants.GLOBAL_REGION)) {
-                Set<String> globalPackages = this.configuration.getRegionPackageMap().get(RegionConstants.GLOBAL_REGION);
-                if (globalPackages.contains(packageName)) {
-                    return true;
-                }
+        if (capRegions != null && capRegions.contains(RegionConstants.GLOBAL_REGION)) {
+            Set<String> globalPackages = this.configuration.getRegionPackageMap().get(RegionConstants.GLOBAL_REGION);
+            if (globalPackages.contains(packageName)) {
+                return true;
             }
         }
         return false;
