@@ -63,21 +63,35 @@ class ResolverHookImpl implements ResolverHook {
         if (!PackageNamespace.PACKAGE_NAMESPACE.equals(requirement.getNamespace()))
             return;
 
+        if (candidates.isEmpty())
+            return;
+
+        Object pkg = candidates.iterator().next().getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE);
+        if (!(pkg instanceof String)) {
+            return;
+        }
+        String packageName = (String) pkg;
+
         Bundle reqBundle = requirement.getRevision().getBundle();
         long reqBundleID = reqBundle.getBundleId();
 
-        Set<String> reqRegions = new HashSet<>(this.configuration.getDefaultRegions());
+        Set<String> bareReqRegions = null; // Null means: not opting into API Regions
         Set<String> reqFeatures = getFeaturesForBundle(reqBundle);
         for (String feature : reqFeatures) {
             Set<String> fr = this.configuration.getFeatureRegionMap().get(feature);
             if (fr != null) {
-                reqRegions.addAll(fr);
+                if (bareReqRegions == null)
+                    bareReqRegions = new HashSet<>();
+                bareReqRegions.addAll(fr);
             }
         }
+        Set<String> reqRegions = new HashSet<>(this.configuration.getDefaultRegions());
+        if (bareReqRegions != null)
+            reqRegions.addAll(bareReqRegions);
 
         Map<BundleCapability, String> coveredCaps = new HashMap<>();
         Map<BundleCapability, String> bcFeatureMap = new HashMap<>();
-        String packageName = null;
+
         nextCapability:
         for (BundleCapability bc : candidates) {
             BundleRevision rev = bc.getRevision();
@@ -86,14 +100,19 @@ class ResolverHookImpl implements ResolverHook {
             long capBundleID = capBundle.getBundleId();
             if (capBundleID == 0) {
                 // always allow capability from the system bundle
-                coveredCaps.put(bc, null); // null value means same bundle, same feature or system bundlee
+                coveredCaps.put(bc, null); // null value means same bundle, same feature or system bundle
                 continue nextCapability;
             }
 
             if (capBundleID == reqBundleID) {
                 // always allow capability from same bundle
-                coveredCaps.put(bc, null); // null value means same bundle, same feature or system bundle
-                continue nextCapability;
+
+                // Here we cover the case where the bundle is not in any feature which means that the package is in the 'global' region,
+                // however if the bundle is in a feature then it could be marked as more specific, with a 'null value', which may
+                // happen below.
+                coveredCaps.put(bc, RegionConstants.GLOBAL_REGION);
+
+                // note: don't continue to nextCapability here, this one may be overwritten later...
             }
 
             Set<String> capFeatures = getFeaturesForBundle(capBundle);
@@ -106,7 +125,9 @@ class ResolverHookImpl implements ResolverHook {
             for (String capFeat : capFeatures) {
                 if (reqFeatures.contains(capFeat)) {
                     // Within a single feature everything can wire to everything else
-                    coveredCaps.put(bc, null); // null value means same bundle, same feature or system bundle
+
+                    // null value means same bundle, same feature or system bundle, but if exported into global region, use 'global' instead
+                    coveredCaps.put(bc, isInGlobalRegion(packageName, capFeat) ? RegionConstants.GLOBAL_REGION : null);
                     continue nextCapability;
                 }
 
@@ -121,32 +142,27 @@ class ResolverHookImpl implements ResolverHook {
                 List<String> sharedRegions = new ArrayList<>(reqRegions);
                 sharedRegions.retainAll(capRegions);
 
-                Object pkg = bc.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE);
-                if (pkg instanceof String) {
-                    packageName = (String) pkg;
-
-                    // Look at specific regions first as they take precedence over the global region
-                    for (String region : sharedRegions) {
-                        Set<String> regionPackages = this.configuration.getRegionPackageMap().get(region);
-                        if (regionPackages != null && regionPackages.contains(packageName)) {
-                            // If the export is in a region that the feature is also in, then allow
-                            coveredCaps.put(bc, region);
-                            continue nextCapability;
-                        }
-                    }
-
-                    // Now check the global region
-                    Set<String> globalPackages = this.configuration.getRegionPackageMap().get(RegionConstants.GLOBAL_REGION);
-                    if (globalPackages != null && globalPackages.contains(packageName)) {
-                        // If the export is in the global region everyone can access
-                        coveredCaps.put(bc, RegionConstants.GLOBAL_REGION);
+                // Look at specific regions first as they take precedence over the global region
+                for (String region : sharedRegions) {
+                    Set<String> regionPackages = this.configuration.getRegionPackageMap().get(region);
+                    if (regionPackages != null && regionPackages.contains(packageName)) {
+                        // If the export is in a region that the feature is also in, then allow
+                        coveredCaps.put(bc, region);
                         continue nextCapability;
                     }
+                }
+
+                // Now check the global region
+                Set<String> globalPackages = this.configuration.getRegionPackageMap().get(RegionConstants.GLOBAL_REGION);
+                if (globalPackages != null && globalPackages.contains(packageName)) {
+                    // If the export is in the global region everyone can access
+                    coveredCaps.put(bc, RegionConstants.GLOBAL_REGION);
+                    continue nextCapability;
                 }
             }
         }
 
-        pruneCoveredCaps(reqRegions, coveredCaps);
+        pruneCoveredCaps(bareReqRegions, coveredCaps);
 
         List<BundleCapability> removedCandidates = new ArrayList<>(candidates);
         // Remove any capabilities that are not covered
@@ -184,26 +200,46 @@ class ResolverHookImpl implements ResolverHook {
         }
     }
 
-    /*
+    /**
+     * Check if the package is exported in the global region
+     * @param packageName The package
+     * @param capFeat The feature where it is found
+     * @return If the feature exports to the global region and the package is exported into the global region
+     */
+    private boolean isInGlobalRegion(String packageName, String capFeat) {
+        Set<String> capRegions = this.configuration.getFeatureRegionMap().get(capFeat);
+        if (capRegions != null && capRegions.contains(RegionConstants.GLOBAL_REGION)) {
+            Set<String> globalPackages = this.configuration.getRegionPackageMap().get(RegionConstants.GLOBAL_REGION);
+            if (globalPackages.contains(packageName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * If there are multiple choices of capabilities and some of the capabilities are in the global
-     * region while others are in another named region, take out the capabilities from the global
-     * region so that the requirement gets wired to the more 'specifc' one than the global one.
-     * Capabilities from bundle 0 (the system bundle), the same bundle as the requirer and from the
-     * same feature as the requirer should always be kept. These are marked in the capMap with a
-     * {@code null} region value.
+     * region while others are in another named region or in a feature-private region, take out the
+     * capabilities from the global region so that the requirement gets wired to the more 'specific'
+     * one than the global one.
+     * Capabilities that are considered specific but not in a named region are marked in the CapMap
+     * with a {@code null} region value.
+     *
+     * @param reqRegions The regions declared in the requiring feature. If {@code null} is passed in
+     * the requirement did not opt into the API Regions
+     * @param capMap The map of capabilities to regions where they are found in
      */
     private void pruneCoveredCaps(Set<String> reqRegions, Map<BundleCapability,String> capMap) {
+        if (reqRegions == null) {
+            // No regions (other than global) for the requirement: do nothing
+            return;
+        }
+
         Set<String> reqNonGlobalRegions = new HashSet<>(reqRegions);
         reqNonGlobalRegions.remove(RegionConstants.GLOBAL_REGION);
 
         if (capMap.size() <= 1) {
             // Shortcut: there is only 0 or 1 capability, nothing to do
-            return;
-        }
-
-        if (reqRegions.size() == 0
-                || Collections.singleton(RegionConstants.GLOBAL_REGION).equals(reqRegions)) {
-            // No regions (other than global) for the requirement: do nothing
             return;
         }
 
@@ -236,7 +272,7 @@ class ResolverHookImpl implements ResolverHook {
             BundleCapability cap = it.next();
             if (!specificCaps.contains(cap)) {
                 it.remove();
-                Activator.LOG.log(Level.INFO, "Removing candidate {0} which is in region {1} as more specific candidates are available in regions {2}",
+                Activator.LOG.log(Level.INFO, "Removing candidate {0} which is in region {1} as more specific candidate(s) are available in regions {2}",
                         new Object[] {
                                 cap, capMap.get(cap),
                                 specificCaps.stream().map(c -> "" + c + " region " + capMap.get(c)).collect(Collectors.joining("/"))

@@ -205,6 +205,35 @@ public class ResolverHookImplTest {
     }
 
     @Test
+    public void testOwnBundleInRegionHasPrecedenceOverGlobal() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.infeature", new Version(1,0,0)), Collections.singletonList("b1"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.inglobal", new Version(1,0,0)), Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b1", Collections.singleton("f1"));
+
+        Map<String, Set<String>> frmap = new HashMap<>();
+        frmap.put("f1", Collections.emptySet());
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+
+        BundleRequirement req1 = mockRequirement("b1", bsnvermap);
+        BundleCapability cap1 = mockCapability("org.foo.bar", "b1", bsnvermap);
+        BundleCapability cap2 = mockCapability("org.foo.bar", "b2", bsnvermap);
+        List<BundleCapability> candidates = new ArrayList<>(Arrays.asList(cap1, cap2));
+        rh.filterMatches(req1, candidates);
+
+        assertEquals("Only the candidate from b1 should be selected, even through b2 is in the global region, "
+                + "because b1 is not exported and as such more specific",
+                Collections.singletonList(cap1), candidates);
+    }
+
+    @Test
     public void testOwnFeatureHasPrecendenceOverGlobal() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
         bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
@@ -238,6 +267,44 @@ public class ResolverHookImplTest {
 
         assertEquals("Only b11 should be selected as its from the same region as b2",
                 Collections.singletonList(cap1), candidates1);
+    }
+
+    @Test
+    public void testGlobalAndNonAPIRegionsFeatureAreEqual() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.infeature", new Version(1,0,0)), Collections.singletonList("b101"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.inglobal", new Version(1,0,0)), Collections.singletonList("b102"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b99"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b99", Collections.singleton("f1"));
+        bfmap.put("b101", Collections.singleton("f1"));
+
+        Map<String, Set<String>> frmap = new HashMap<>();
+        frmap.put("f1",  new HashSet<>(Arrays.asList("r1", "global")));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+        rpmap.put("r1", Collections.singleton("org.blah.blah"));
+        rpmap.put(RegionConstants.GLOBAL_REGION, Collections.singleton("org.foo.bar"));
+
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+
+        // b2 needs to resolve 'org.foo.bar' and there are 2 candidates:
+        // b101 is in the same feature as b2
+        // b102 is in the no feature
+        // In this case both should still be available as both are in the global region
+        BundleRequirement req1 = mockRequirement("b99", bsnvermap);
+        BundleCapability cap1 = mockCapability("org.foo.bar", "b101", bsnvermap);
+        BundleCapability cap2 = mockCapability("org.foo.bar", "b102", bsnvermap);
+        List<BundleCapability> candidates = new ArrayList<>(Arrays.asList(cap1, cap2));
+        Set<BundleCapability> orgCandidates = new HashSet<>(candidates);
+        rh.filterMatches(req1, candidates);
+
+        assertEquals(orgCandidates, new HashSet<>(candidates));
     }
 
     @Test
@@ -661,6 +728,7 @@ public class ResolverHookImplTest {
         Mockito.when(br.getBundle()).thenReturn(bundle);
 
         BundleCapability cap = Mockito.mock(BundleCapability.class);
+        Mockito.when(cap.getNamespace()).thenReturn(PackageNamespace.PACKAGE_NAMESPACE);
         Mockito.when(cap.getAttributes()).thenReturn(attrs);
         Mockito.when(cap.getRevision()).thenReturn(br);
         return cap;
