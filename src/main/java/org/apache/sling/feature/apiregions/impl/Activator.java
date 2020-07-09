@@ -278,7 +278,7 @@ public class Activator implements BundleActivator, FrameworkListener {
             });
             final ServiceRegistration<?> reg = bundleContext.registerService(CFG_LISTENER_CLASS_NAME, msf, null);
             // get existing configurations
-            final Object result = caListConfigcMethod.invoke(cfgAdmin, "(service.factoryPid= " + FACTORY_PID + ")");
+            final Object result = caListConfigcMethod.invoke(cfgAdmin, "(service.factoryPid=" + FACTORY_PID + ")");
             if ( result != null ) {
                 for(int i=0; i<Array.getLength(result); i++) {
                     final Object cfg = Array.get(result, i);
