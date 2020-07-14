@@ -54,8 +54,9 @@ public class ResolverHookImplTest {
         bfmap.put("b1", Collections.singleton("f1"));
         bfmap.put("b2", Collections.singleton("f2"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f2", Collections.singleton("r2"));
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f2", Collections.singletonList("r2"));
+        frmap.put("__region.order__", Arrays.asList("global", "r2"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
@@ -81,8 +82,9 @@ public class ResolverHookImplTest {
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b2", Collections.singleton("f2"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f2", Collections.singleton("r2"));
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f2", Collections.singletonList("r2"));
+        frmap.put("__region.order__", Arrays.asList("global", "r2"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
@@ -109,9 +111,10 @@ public class ResolverHookImplTest {
         bfmap.put("b1", Collections.singleton("f1"));
         bfmap.put("b2", Collections.singleton("f2"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f1", Collections.emptySet());
-        frmap.put("f2", Collections.singleton("r2"));
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f1", Collections.emptyList());
+        frmap.put("f2", Collections.singletonList("r2"));
+        frmap.put("__region.order__", Arrays.asList("global", "r2"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
@@ -138,9 +141,10 @@ public class ResolverHookImplTest {
         bfmap.put("b1", Collections.singleton("f1"));
         bfmap.put("b2", Collections.singleton("f2"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f1", Collections.singleton("r2"));
-        frmap.put("f2", Collections.singleton("r2"));
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f1", Collections.singletonList("r2"));
+        frmap.put("f2", Collections.singletonList("r2"));
+        frmap.put("__region.order__", Arrays.asList("global", "r2"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
@@ -173,10 +177,59 @@ public class ResolverHookImplTest {
         bfmap.put("b11", Collections.singleton("f11"));
         bfmap.put("b2", Collections.singleton("f2"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f10", new HashSet<>(Arrays.asList("r2", "r3")));
-        frmap.put("f11", new HashSet<>(Arrays.asList("r1", "r2")));
-        frmap.put("f2", Collections.singleton("r1"));
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f10", Arrays.asList("r2", "r3"));
+        frmap.put("f11", Arrays.asList("r1", "r2"));
+        frmap.put("f2", Collections.singletonList("r1"));
+        frmap.put("__region.order__", Arrays.asList("global", "r1", "r2", "r3", "r4"));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+        rpmap.put("r1", Collections.singleton("org.foo.bar"));
+        rpmap.put("r2", new HashSet<>(Arrays.asList("xxx", "yyy", "zzz")));
+        rpmap.put("r3", new HashSet<>(Arrays.asList("org.foo.bar", "zzz")));
+
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+
+        // b2 needs to resolve to 'org.foo.bar' package. b2 is in region r1.
+        // The package is provided by 3 bundles:
+        //   b10 provides it but is not in a matching region
+        //   b11 provides it and has a matching region
+        //   b19 provides it in the global region
+        // Only b11 should provide the capability. Even though b19 provides it from the global region, if there is an overlapping
+        // specific region then the global region should not be used
+        BundleRequirement req1 = mockRequirement("b2", bsnvermap);
+        BundleCapability cap1 = mockCapability("org.foo.bar", "b10", bsnvermap);
+        BundleCapability cap2 = mockCapability("org.foo.bar", "b11", bsnvermap);
+        BundleCapability cap3 = mockCapability("org.foo.bar", "b19", bsnvermap);
+        List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1, cap2, cap3));
+        rh.filterMatches(req1, candidates1);
+
+        assertEquals("Only the capability coming from bundle b11 should be selected, b10 is in a different region and b19 is in global "
+                + "which should be excluded as there is a capability in a matching region.",
+                Collections.singletonList(cap2), candidates1);
+    }
+
+    @Test
+    public void testRegionHasPrecedenceOverGlobalRegionOrderNotSet() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.otherfeature", new Version(1,0,0)), Collections.singletonList("b10"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.infeature", new Version(1,0,0)), Collections.singletonList("b11"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "providing.bundle.inglobal", new Version(1,0,0)), Collections.singletonList("b19"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b10", Collections.singleton("f10"));
+        bfmap.put("b11", Collections.singleton("f11"));
+        bfmap.put("b2", Collections.singleton("f2"));
+
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f10", Arrays.asList("r2", "r3"));
+        frmap.put("f11", Arrays.asList("r1", "r2"));
+        frmap.put("f2", Collections.singletonList("r1"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("r1", Collections.singleton("org.foo.bar"));
@@ -215,8 +268,9 @@ public class ResolverHookImplTest {
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b1", Collections.singleton("f1"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f1", Collections.emptySet());
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f1", Collections.emptyList());
+        frmap.put("__region.order__", Arrays.asList("global", "r1"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
@@ -247,8 +301,9 @@ public class ResolverHookImplTest {
         bfmap.put("b11", Collections.singleton("f1"));
         bfmap.put("b2", Collections.singleton("f1"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f1", Collections.singleton("r1"));
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f1", Collections.singletonList("r1"));
+        frmap.put("__region.order__", Arrays.asList("global", "r1"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("r1", Collections.emptySet());
@@ -284,8 +339,9 @@ public class ResolverHookImplTest {
         bfmap.put("b99", Collections.singleton("f1"));
         bfmap.put("b101", Collections.singleton("f1"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f1",  new HashSet<>(Arrays.asList("r1", "global")));
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f1", Arrays.asList("r1", "global"));
+        frmap.put("__region.order__", Arrays.asList("global", "r1"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("r1", Collections.singleton("org.blah.blah"));
@@ -323,9 +379,10 @@ public class ResolverHookImplTest {
         bfmap.put("b10", Collections.singleton("f10"));
         bfmap.put("b2", Collections.singleton("f2"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f10", new HashSet<>(Arrays.asList("r2", "r3")));
-        frmap.put("f2", Collections.singleton("r1"));
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f10", Arrays.asList("r2", "r3"));
+        frmap.put("f2", Collections.singletonList("r1"));
+        frmap.put("__region.order__", Arrays.asList("global", "r1", "r2", "r3"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("r1", Collections.emptySet());
@@ -362,7 +419,7 @@ public class ResolverHookImplTest {
                 "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
-        Map<String, Set<String>> frmap = new HashMap<>();
+        Map<String, List<String>> frmap = new HashMap<>();
         Map<String, Set<String>> rpmap = new HashMap<>();
 
         ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
@@ -411,12 +468,13 @@ public class ResolverHookImplTest {
         bfmap.put("b19", Collections.singleton("f3"));
         bfmap.put("b20", Collections.singleton("f4"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f", new HashSet<>(Arrays.asList("r1", "r2", RegionConstants.GLOBAL_REGION)));
-        frmap.put("f1", Collections.singleton("r1"));
-        frmap.put("f2", Collections.singleton("r2"));
-        frmap.put("f3", Collections.singleton("r3"));
-        frmap.put("f4", Collections.singleton("r3"));
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f", Arrays.asList("r1", "r2", RegionConstants.GLOBAL_REGION));
+        frmap.put("f1", Collections.singletonList("r1"));
+        frmap.put("f2", Collections.singletonList("r2"));
+        frmap.put("f3", Collections.singletonList("r3"));
+        frmap.put("f4", Collections.singletonList("r3"));
+        frmap.put("__region.order__", Arrays.asList("global", "r1", "r2", "r3"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("r0", Collections.singleton("org.bar"));
@@ -550,11 +608,10 @@ public class ResolverHookImplTest {
         bfmap.put("b1", Collections.singleton("f1"));
         bfmap.put("b2", Collections.singleton("f2"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f1", new HashSet<>(Arrays.asList(
-                RegionConstants.GLOBAL_REGION, "org.foo.blah")));
-        frmap.put("f2", new HashSet<>(Arrays.asList("org.foo.bar",
-                RegionConstants.GLOBAL_REGION, "org.foo.blah")));
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f1", Arrays.asList(RegionConstants.GLOBAL_REGION, "org.foo.blah"));
+        frmap.put("f2", Arrays.asList("org.foo.bar", RegionConstants.GLOBAL_REGION, "org.foo.blah"));
+        frmap.put("__region.order__", Arrays.asList("global", "org.foo.blah", "org.foo.bar"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("org.foo.bar", Collections.singleton("org.test"));
@@ -572,8 +629,8 @@ public class ResolverHookImplTest {
 
     @Test
     public void testGetRegionsForPackage() {
-        Set<String> regions = new HashSet<>(Arrays.asList("r1", "r2", "r3"));
-        Map<String, Set<String>> featureRegionMap = Collections.singletonMap("f2", regions);
+        List<String> regions = Arrays.asList("r1", "r2", "r3");
+        Map<String, List<String>> featureRegionMap = Collections.singletonMap("f2", regions);
         Map<String, Set<String>> regionPackageMap = new HashMap<>();
 
         regionPackageMap.put("r2", Collections.singleton("a.b.c"));
@@ -609,16 +666,17 @@ public class ResolverHookImplTest {
         bfmap.put("b98", Collections.singleton("f2"));
         bfmap.put("b100", Collections.singleton("f1"));
 
-        Map<String, Set<String>> frmap = new HashMap<>();
-        frmap.put("f1", Collections.singleton("r1"));
-        frmap.put("f2", Collections.singleton("r2"));
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("f1", Collections.singletonList("r1"));
+        frmap.put("f2", Collections.singletonList("r2"));
+        frmap.put("__region.order__", Arrays.asList("global", "r0", "r1", "r2", "r3"));
 
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("r1", Collections.singleton("org.test"));
         rpmap.put("r2", Collections.singleton("org.test"));
 
         ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap,
-                new HashSet<>(Arrays.asList("r1", "r3"))));
+                new HashSet<>(Arrays.asList("r0", "r1"))));
 
         // b99 is not in any region itself and tries to resolve to b100 which is in r1
         // b99 can resolve to b100 because 'r1' is listed as a default region in the
@@ -701,6 +759,57 @@ public class ResolverHookImplTest {
         Set<String> expected = new HashSet<>(Arrays.asList("feature3", "feature4"));
         ResolverHookImpl rhi4 = (ResolverHookImpl) re.begin(Collections.emptySet());
         assertEquals(expected, rhi4.getFeaturesForBundle(b4));
+    }
+
+    @Test
+    public void testRegionOrderInheritance() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "b1", new Version(1,0,0)), Collections.singletonList("b1"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "b2", new Version(1,0,0)), Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b1", Collections.singleton("g:f1:1"));
+        bfmap.put("b2", Collections.singleton("g:f2:1"));
+
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("g:f1:1", Arrays.asList("deprecated", "internal"));
+        frmap.put("g:f2:1", Collections.singletonList("internal"));
+        frmap.put("__region.order__", Arrays.asList("global", "deprecated", "internal"));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+        rpmap.put("internal", Collections.singleton("xyz"));
+        rpmap.put("deprecated", Collections.singleton("abc"));
+
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+
+        // b2 needs to resolve to the "abc" package, which is exported into the 'deprecated' region.
+        // f2 doesn't directly see the 'deprecated' region (only internal), but since it's declared before
+        // the internal region by f1, f2 implicitly gets visibility of it because it comes before the
+        // internal region in the global region ordering.
+        BundleRequirement req1 = mockRequirement("b2", bsnvermap);
+        BundleCapability cap1 = mockCapability("abc", "b1", bsnvermap);
+        List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1));
+        rh.filterMatches(req1, candidates1);
+
+        assertEquals(Collections.singletonList(cap1), candidates1);
+    }
+
+    @Test
+    public void testEmptyCandidates() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "b1", new Version(1,0,0)), Collections.singletonList("b1"));
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        Map<String, List<String>> frmap = new HashMap<>();
+        Map<String, Set<String>> rpmap = new HashMap<>();
+
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        BundleRequirement req1 = mockRequirement("b1", bsnvermap);
+        List<BundleCapability> candidates1 = new ArrayList<>();
+        rh.filterMatches(req1, candidates1);
+        assertEquals("There were no candidates, there still are none", 0, candidates1.size());
     }
 
     private BundleCapability mockCapability(String pkgName, String bid, Map<Entry<String, Version>, List<String>> bsnvermap) {

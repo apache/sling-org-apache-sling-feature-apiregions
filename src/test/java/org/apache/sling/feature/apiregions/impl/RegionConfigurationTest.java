@@ -27,6 +27,7 @@ import static org.apache.sling.feature.apiregions.impl.RegionConstants.PROPERTIE
 import static org.apache.sling.feature.apiregions.impl.RegionConstants.PROPERTIES_RESOURCE_PREFIX;
 import static org.apache.sling.feature.apiregions.impl.RegionConstants.REGION_PACKAGE_FILENAME;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -37,6 +38,7 @@ import java.net.URISyntaxException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Dictionary;
 import java.util.HashSet;
@@ -193,9 +195,9 @@ public class RegionConfigurationTest {
 
         RegionConfiguration re = new RegionConfiguration(ctx);
         assertEquals(2, re.featureRegionMap.size());
-        assertEquals(Collections.singleton("global"),
+        assertEquals(Collections.singletonList("global"),
                 re.featureRegionMap.get("an.other:feature:123"));
-        assertEquals(new HashSet<>(Arrays.asList("global", "internal")),
+        assertEquals(Arrays.asList("global", "internal"),
                 re.featureRegionMap.get("org.sling:something:1.2.3"));
         assertEquals(f,  re.getRegistrationProperties().get(FEATURE_REGION_FILENAME));
     }
@@ -217,18 +219,18 @@ public class RegionConfigurationTest {
         re.setConfig("new.config", props);
 
         assertEquals(3, re.featureRegionMap.size());
-        assertEquals(Collections.singleton("newregion"),
+        assertEquals(Collections.singletonList("newregion"),
                 re.featureRegionMap.get("fg1:fa1:3.0"));
-        assertEquals(Collections.singleton("global"),
+        assertEquals(Collections.singletonList("global"),
                 re.featureRegionMap.get("an.other:feature:123"));
-        assertEquals(new HashSet<>(Arrays.asList("global", "internal")),
+        assertEquals(Arrays.asList("global", "internal"),
                 re.featureRegionMap.get("org.sling:something:1.2.3"));
 
         re.removeConfig("new.config");
         assertEquals(2, re.featureRegionMap.size());
-        assertEquals(Collections.singleton("global"),
+        assertEquals(Collections.singletonList("global"),
                 re.featureRegionMap.get("an.other:feature:123"));
-        assertEquals(new HashSet<>(Arrays.asList("global", "internal")),
+        assertEquals(Arrays.asList("global", "internal"),
                 re.featureRegionMap.get("org.sling:something:1.2.3"));
     }
 
@@ -493,6 +495,19 @@ public class RegionConfigurationTest {
                 expected, caps2);
     }
 
+    @Test
+    public void testRegionOrderProperty() throws Exception {
+        BundleContext ctx = Mockito.mock(BundleContext.class);
+        Mockito.when(ctx.getBundle()).thenReturn(Mockito.mock(Bundle.class));
+        Mockito.when(ctx.getProperty(PROPERTIES_FILE_LOCATION)).
+            thenReturn("classloader://props1");
+
+        RegionConfiguration re = new RegionConfiguration(ctx);
+        assertEquals(Arrays.asList("global", "internal"), re.getGlobalRegionOrder());
+        assertEquals(2, re.getFeatureRegionMap().size());
+        assertNull(re.getFeatureRegionMap().get("__region.order__"));
+    }
+
     private BundleRequirement mockRequirement(String bsn, Version bver, BundleContext mockContext) {
         BundleRevision br = mockBundleRevision(bsn, bver, mockContext);
 
@@ -567,10 +582,11 @@ public class RegionConfigurationTest {
         }
     }
 
-    private void assertMapUnmodifiable(Map<String, Set<String>> m) {
-        Map.Entry<String, Set<String>> entry = m.entrySet().iterator().next();
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private void assertMapUnmodifiable(Map<String, ? extends Collection<String>> m) {
+        Map.Entry<String, ? extends Collection<String>> entry = m.entrySet().iterator().next();
         try {
-            Set<String> s = entry.getValue();
+            Collection<String> s = entry.getValue();
             s.add("testing");
             fail("Changing a value should have thrown an exception");
         } catch (Exception ex) {
@@ -578,7 +594,8 @@ public class RegionConfigurationTest {
         }
 
         try {
-            m.put("foo", Collections.<String>emptySet());
+            Map m2 = m;
+            m2.put("foo", Collections.<String>emptySet());
             fail("Adding a new value should have thrown an exception");
         } catch (Exception ex) {
             // good
