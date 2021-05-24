@@ -153,14 +153,14 @@ public class Activator implements BundleActivator, FrameworkListener {
                 return;
             }
 
-            Requirement cmReq = createPackageRequirement();
+            Requirement cmReq = createCMPackageRequirement();
 
             // Reflectively register a Configuration Admin ManagedService, if the Config Admin API is available.
             // Because this fragment is a framework extension, we need to use the wiring API to find the CM API.
             Collection<BundleCapability> providers = fw.findProviders(cmReq);
             for (BundleCapability cap : providers) {
-                if ( registerManagedService(cap)) {
-                    break;
+                if (registerManagedService(cap)) {
+                    return;
                 }
             }
             LOG.log(Level.INFO, "No Configuration Admin API available");
@@ -296,7 +296,7 @@ public class Activator implements BundleActivator, FrameworkListener {
         return null;
     }
 
-    static Requirement createPackageRequirement() {
+    static Requirement createCMPackageRequirement() {
         Requirement cmReq = new Requirement() {
             @Override
             public String getNamespace() {
