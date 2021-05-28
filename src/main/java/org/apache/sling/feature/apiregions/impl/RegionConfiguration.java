@@ -26,6 +26,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Array;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.AbstractMap;
@@ -265,8 +266,8 @@ class RegionConfiguration {
         for(final String val : convert(valObj)) {
             final String[] parts = val.split("=");
             final String n = parts[0];
-            final String[] features = parts.length == 1 ? new String[0] : parts[1].split(",");
-            addValuesToMap(map, n, Arrays.asList(features), constructor);
+            final List<String> features = parts.length == 1 ? Collections.emptyList() : Arrays.asList(parts[1].split(","));
+            addValuesToMap(map, n, features, constructor);
         }
     }
 
