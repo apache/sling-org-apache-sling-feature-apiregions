@@ -265,7 +265,7 @@ class RegionConfiguration {
         for(final String val : convert(valObj)) {
             final String[] parts = val.split("=");
             final String n = parts[0];
-            final String[] features = parts[1].split(",");
+            final String[] features = parts.length == 1 ? new String[0] : parts[1].split(",");
             addValuesToMap(map, n, Arrays.asList(features), constructor);
         }
     }
