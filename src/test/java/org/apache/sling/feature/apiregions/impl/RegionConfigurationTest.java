@@ -180,6 +180,20 @@ public class RegionConfigurationTest {
                 re.bundleFeatureMap.get("org.sling:b2:1"));
         assertEquals(new HashSet<>(Arrays.asList("some.other:feature:123", "org.sling:something:1.2.3:slingosgifeature:myclassifier")),
                 re.bundleFeatureMap.get("org.sling:b3:1"));
+
+        // add a config with an empty feature list
+        props.put(RegionConstants.PROP_bundleFeatures, "g3:b3:2.7=");
+        re.setConfig("new.config", props);
+
+        assertEquals(4, re.bundleFeatureMap.size());
+        assertEquals(Collections.emptySet(),
+            re.bundleFeatureMap.get("g3:b3:2.7"));
+        assertEquals(Collections.singleton("org.sling:something:1.2.3:slingosgifeature:myclassifier"),
+            re.bundleFeatureMap.get("org.sling:b1:1"));
+        assertEquals(Collections.singleton("org.sling:something:1.2.3:slingosgifeature:myclassifier"),
+            re.bundleFeatureMap.get("org.sling:b2:1"));
+        assertEquals(new HashSet<>(Arrays.asList("some.other:feature:123", "org.sling:something:1.2.3:slingosgifeature:myclassifier")),
+            re.bundleFeatureMap.get("org.sling:b3:1"));
     }
 
     @Test
