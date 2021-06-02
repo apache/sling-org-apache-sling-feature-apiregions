@@ -275,7 +275,7 @@ public class ActivatorTest {
 
     @Test
     public void testCreatePackageRequirement() {
-        Requirement req = Activator.createPackageRequirement();
+        Requirement req = Activator.createCMPackageRequirement();
         assertEquals(PackageNamespace.PACKAGE_NAMESPACE, req.getNamespace());
         assertEquals(1, req.getDirectives().size());
         String directive = req.getDirectives().get("filter");
