@@ -1,0 +1,32 @@
+Sling Feature API Regions
+===========================
+
+
+Default Regions
+-------------------
+
+
+
+Region Order
+-------------------
+
+
+
+Properties
+-------------------
+
+ - org.apache.sling.feature.apiregions.regions=null
+ - sling.feature.apiregions.joinglobal=null
+ - sling.feature.apiregions.default=null
+ - sling.feature.apiregions.location=null
+
+
+Packages per Region
+-------------------
+
+
+
+Bundle Mappings
+-------------------
+
+

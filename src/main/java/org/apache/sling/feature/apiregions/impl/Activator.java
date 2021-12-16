@@ -61,6 +61,7 @@ public class Activator implements BundleActivator, FrameworkListener {
 
     BundleContext bundleContext;
     ServiceRegistration<ResolverHookFactory> hookRegistration;
+    ServiceRegistration<RegionPrinter> webconsoleRegistration;
 
     RegionConfiguration configuration;
 
@@ -74,6 +75,7 @@ public class Activator implements BundleActivator, FrameworkListener {
 
         registerHook();
 
+        registerWebconsoleStatus();
         this.configAdminTracker = new ServiceTracker<>(context, CONFIG_ADMIN_CLASS_NAME, new ServiceTrackerCustomizer<Object, Object>() {
 
             @Override
@@ -100,7 +102,10 @@ public class Activator implements BundleActivator, FrameworkListener {
         this.configAdminTracker.open();
 
         context.addFrameworkListener(this);
+
+        
     }
+
 
     @Override
     public synchronized void stop(BundleContext context) throws Exception {
@@ -135,10 +140,34 @@ public class Activator implements BundleActivator, FrameworkListener {
         hookRegistration = bundleContext.registerService(ResolverHookFactory.class, enforcer, this.configuration.getRegistrationProperties());
     }
 
+    synchronized void registerWebconsoleStatus() {
+
+        if (webconsoleRegistration != null){
+            return; // There is already a hook, no need to re-register
+        }
+
+        LOG.info("Registering region printer");
+        RegionPrinter printer = new RegionPrinter(bundleContext,configuration);
+
+        final Dictionary<String, String> serviceProps = new Hashtable<>();
+        serviceProps.put("felix.webconsole.label", RegionPrinter.PATH);
+        serviceProps.put("felix.webconsole.title", RegionPrinter.HEADLINE);
+        serviceProps.put("felix.webconsole.configprinter.modes", "always");
+
+        webconsoleRegistration = bundleContext.registerService(RegionPrinter.class, printer, serviceProps);
+    }
+
     synchronized void unregisterHook() {
         if (hookRegistration != null) {
             hookRegistration.unregister();
             hookRegistration = null;
+        }
+    }
+
+    synchronized void unregisterWebconsoleStatus() {
+        if (webconsoleRegistration != null) {
+            webconsoleRegistration.unregister();
+            webconsoleRegistration = null;
         }
     }
 
@@ -192,13 +221,16 @@ public class Activator implements BundleActivator, FrameworkListener {
                         Object arg = args[0];
                         if (arg == null) {
                             registerHook();
+                            registerWebconsoleStatus();
                         } else if (arg instanceof Dictionary) {
                             Dictionary<?,?> props = (Dictionary<?,?>) args[0];
                             Object disabled = props.get("disable");
                             if ("true".equals(disabled)) {
                                 unregisterHook();
+                                unregisterWebconsoleStatus();
                             } else {
                                 registerHook();
+                                registerWebconsoleStatus();
                             }
                         }
                     }
