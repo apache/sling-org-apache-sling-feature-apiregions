@@ -67,6 +67,13 @@ public class RegionPrinterTest {
     }
 
     @Test
+    public void testNoConfiguration() {
+        RegionPrinter printer = new RegionPrinter(bundleContext, null);
+        printer.printConfiguration(pw);
+        assertEquals(loadResource("printer/noconfig.txt"), sw.toString());
+    }
+
+    @Test
     public void testWithData() throws URISyntaxException, IOException {
 
         String e = getClass().getResource("/empty.properties").toURI().toString();

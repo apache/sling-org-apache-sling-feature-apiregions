@@ -1,4 +1,4 @@
-Sling Feature API Regions
+Sling Feature - API Regions
 ===========================
 
 

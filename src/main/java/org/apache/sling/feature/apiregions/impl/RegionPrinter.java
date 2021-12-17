@@ -20,6 +20,7 @@ package org.apache.sling.feature.apiregions.impl;
 
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +36,8 @@ import org.osgi.framework.Version;
                                 // interpreted correctly across all
 public class RegionPrinter {
 
-    static final String HEADLINE = "Sling Feature API Regions";
-    static final String PATH = "apiregions";
+    static final String HEADLINE = "Sling Feature - API Regions";
+    static final String PATH = "feature_apiregions";
     private RegionConfiguration config;
     private BundleContext context;
 
@@ -81,6 +82,10 @@ public class RegionPrinter {
         Arrays.stream(properties).forEach(p -> pw.println(String.format(" - %s=%s", p, context.getProperty(p))));
     }
 
+    private void printAll(Collection<String> op, PrintWriter pw) {
+        Optional.ofNullable(op).ifPresent(values -> values.forEach(v -> pw.println(" - " + v)));
+    }
+
     /**
      * Print out the region information
      * 
@@ -89,16 +94,20 @@ public class RegionPrinter {
     public void printConfiguration(PrintWriter pw) {
         pw.println(HEADLINE + "\n===========================");
 
-        renderHeader(pw, "Default Regions");
-        config.getDefaultRegions().stream().forEach(r -> pw.println(" - " + r));
-        renderHeader(pw, "Region Order");
-        config.getGlobalRegionOrder().stream().forEach(r -> pw.println(" - " + r));
-        renderHeader(pw, "Properties");
-        renderProperties(pw);
-        renderHeader(pw, "Packages per Region");
-        renderPackageMappings(pw);
-        renderHeader(pw, "Bundle Mappings");
-        renderBundleMappings(pw);
+        if (config != null) {
+            renderHeader(pw, "Default Regions");
+            printAll(config.getDefaultRegions(), pw);
+            renderHeader(pw, "Region Order");
+            printAll(config.getGlobalRegionOrder(), pw);
+            renderHeader(pw, "Properties");
+            renderProperties(pw);
+            renderHeader(pw, "Packages per Region");
+            renderPackageMappings(pw);
+            renderHeader(pw, "Bundle Mappings");
+            renderBundleMappings(pw);
+        } else {
+            pw.println("\n\nConfiguration not available");
+        }
     }
 
 }
