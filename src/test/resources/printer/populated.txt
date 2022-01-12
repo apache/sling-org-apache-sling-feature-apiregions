@@ -1,0 +1,54 @@
+Sling Feature - API Regions
+===========================
+
+
+Default Regions
+-------------------
+
+
+
+Region Order
+-------------------
+
+ - global
+ - internal
+
+
+Properties
+-------------------
+
+ - org.apache.sling.feature.apiregions.regions=null
+ - sling.feature.apiregions.joinglobal=null
+ - sling.feature.apiregions.default=null
+ - sling.feature.apiregions.location=null
+
+
+Packages per Region
+-------------------
+
+
+global:
+ - a.b.c
+ - d.e.f
+ - test
+
+internal:
+ - xyz
+
+
+Bundle Mappings
+-------------------
+
+ - org.sling:b1:1
+	 - features: org.sling:something:1.2.3:slingosgifeature:myclassifier
+	 - regions: 
+	 - location: null
+ - org.sling:b2:1
+	 - features: org.sling:something:1.2.3:slingosgifeature:myclassifier
+	 - regions: 
+	 - location: null
+ - org.sling:b3:1
+	 - features: some.other:feature:123,org.sling:something:1.2.3:slingosgifeature:myclassifier
+	 - regions: 
+	 - location: null
+

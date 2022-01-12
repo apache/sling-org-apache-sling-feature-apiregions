@@ -111,6 +111,15 @@ public class ActivatorTest {
                 Mockito.eq(expectedProps));
 
         Mockito.verify(bc).addFrameworkListener(a);
+
+        Dictionary<String, Object> expectedPrinterProps = new Hashtable<>();
+        expectedPrinterProps.put("felix.webconsole.label", RegionPrinter.PATH);
+        expectedPrinterProps.put("felix.webconsole.title", RegionPrinter.HEADLINE);
+        expectedPrinterProps.put("felix.webconsole.configprinter.modes", "always");
+        Mockito.verify(bc, Mockito.times(1)).registerService(
+                Mockito.eq(RegionPrinter.class),
+                Mockito.isA(RegionPrinter.class),
+                Mockito.eq(expectedPrinterProps));
     }
 
     @Test
@@ -122,6 +131,7 @@ public class ActivatorTest {
         a.registerHook();
 
         assertNull(a.hookRegistration);
+        assertNull(a.webconsoleRegistration);
     }
 
     @SuppressWarnings("unchecked")
@@ -132,9 +142,12 @@ public class ActivatorTest {
         Activator a = new Activator();
         a.bundleContext = bc;
         a.hookRegistration = Mockito.mock(ServiceRegistration.class);
+        a.webconsoleRegistration = Mockito.mock(ServiceRegistration.class);
         a.registerHook();
+        a.registerWebconsoleStatus();
 
         assertNotNull(a.hookRegistration);
+        assertNotNull(a.webconsoleRegistration);
         Mockito.verifyZeroInteractions(bc);
     }
 
@@ -142,7 +155,9 @@ public class ActivatorTest {
     public void testUnregisterHook() {
         Activator a = new Activator();
         a.unregisterHook(); // Should not throw an exception
+        a.unregisterWebconsoleStatus();
         assertNull(a.hookRegistration);
+        assertNull(a.webconsoleRegistration);
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
