@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.osgi.annotation.bundle.Header;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
@@ -46,6 +47,7 @@ import org.osgi.resource.Resource;
 import org.osgi.util.tracker.ServiceTracker;
 import org.osgi.util.tracker.ServiceTrackerCustomizer;
 
+@Header(name=Constants.EXTENSION_BUNDLE_ACTIVATOR, value="${@class}")
 public class Activator implements BundleActivator, FrameworkListener {
     static final String CONFIG_ADMIN_PKG_NAME = "org.osgi.service.cm";
     static final String MANAGED_SERVICE_CLASS_NAME = CONFIG_ADMIN_PKG_NAME + ".ManagedService";
