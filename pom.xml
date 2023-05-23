@@ -17,7 +17,7 @@
     <parent>
         <groupId>org.apache.sling</groupId>
         <artifactId>sling-bundle-parent</artifactId>
-        <version>48</version>
+        <version>49</version>
         <relativePath />
     </parent>
 
@@ -79,7 +79,6 @@
         <dependency>
             <groupId>org.osgi</groupId>
             <artifactId>org.osgi.resource</artifactId>
-            <version>1.0.1</version>
             <scope>provided</scope>
         </dependency>
 
