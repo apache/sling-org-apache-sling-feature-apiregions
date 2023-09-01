@@ -18,14 +18,7 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.Version;
-import org.osgi.framework.namespace.PackageNamespace;
-import org.osgi.framework.wiring.BundleCapability;
-import org.osgi.framework.wiring.BundleRequirement;
-import org.osgi.framework.wiring.BundleRevision;
+import static org.junit.Assert.assertEquals;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -39,7 +32,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.Version;
+import org.osgi.framework.namespace.PackageNamespace;
+import org.osgi.framework.wiring.BundleCapability;
+import org.osgi.framework.wiring.BundleRequirement;
+import org.osgi.framework.wiring.BundleRevision;
 
 public class ResolverHookImplTest {
     @Test
@@ -810,6 +810,60 @@ public class ResolverHookImplTest {
         List<BundleCapability> candidates1 = new ArrayList<>();
         rh.filterMatches(req1, candidates1);
         assertEquals("There were no candidates, there still are none", 0, candidates1.size());
+    }
+
+    /* This test exposes a bug that exports the package from the wrong bundle. The situation can be reproduced as follows:
+     * - Have a feature f1 that contains a bundle that exports a package, e.g. org.soup. Make sure that the feature doesn't
+     *   export the package into an API region.
+     * - Have another feature f2 that contains a different bundle that exports the same package. In this case the feature
+     *   exports the package into the 'global' region.
+     * Now when the resolver hook needs to handle the wiring for f2 it gets 2 candidates, because to OSGi both exporting
+     * bundles are candidates.
+     * The resolver hook finds that org.soup is exported into the global region (by f2). Then it looks at what bundles in
+     * the global region and finds that both f1 and f2 are in the global region because they are by default.
+     * Then the resolver hook thinks that both candidates are acceptible because both are in the global region, so it
+     * produces a wiring to the candidate from f1, even though f1 doesn't export the package.
+     *
+     * It should really just return the candidate from f2, but currently the data provided to the API regions doesn't have
+     * the richness to know this.
+     */
+    @Test
+    public void testABCXYZ() {
+        Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "b1", new Version(1,0,0)), Collections.singletonList("b1"));
+        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
+                "b2", new Version(1,0,0)), Collections.singletonList("b2"));
+
+        Map<String, Set<String>> bfmap = new HashMap<>();
+        bfmap.put("b1", Collections.singleton("g:feat-int:1"));
+        bfmap.put("b2", Collections.singleton("g:feat-global:1"));
+
+        Map<String, List<String>> frmap = new HashMap<>();
+        frmap.put("g:feat-int:1", Arrays.asList("global", "org.foo.bar.deprecated"));
+        frmap.put("g:feat-global:1", Arrays.asList("global", "org.foo.bar.deprecated"));
+
+        Map<String, Set<String>> rpmap = new HashMap<>();
+        rpmap.put("global", Collections.singleton("spaghetti.soup"));
+
+        RegionConfiguration rc = new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap,
+                new HashSet<>(Arrays.asList("global", "org.foo.bar.deprecated")));
+
+        ResolverHookImpl rh = new ResolverHookImpl(rc);
+        BundleRequirement req = mockRequirement("b2", bsnvermap);
+        List<BundleCapability> candidates = new ArrayList<>();
+
+        BundleCapability capInt = mockCapability("spaghetti.soup", "b1", bsnvermap);
+        BundleCapability capGlob = mockCapability("spaghetti.soup", "b2", bsnvermap);
+        candidates.add(capInt);
+        candidates.add(capGlob);
+
+        rh.filterMatches(req, candidates);
+        assertEquals("We should only get the second candidate here because that is the one that is exporting " +
+                "spaghetti.soup. However we get both, because the data currently doesn't expose what feature exported a package " +
+                "it just states that a package is exported in a certain region. So if there is a bundle in a feature that is part " +
+                "of that region and happens to export it, it is automatically included, even if that package isn't exported in that feature",
+                1, candidates.size());
     }
 
     private BundleCapability mockCapability(String pkgName, String bid, Map<Entry<String, Version>, List<String>> bsnvermap) {
