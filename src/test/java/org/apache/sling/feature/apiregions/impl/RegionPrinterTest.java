@@ -18,15 +18,6 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
-import static org.apache.sling.feature.apiregions.impl.RegionConstants.BUNDLE_FEATURE_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConstants.FEATURE_REGION_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConstants.IDBSNVER_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConstants.PROPERTIES_RESOURCE_PREFIX;
-import static org.apache.sling.feature.apiregions.impl.RegionConstants.REGION_PACKAGE_FILENAME;
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -38,6 +29,15 @@ import org.junit.Test;
 import org.mockito.internal.util.io.IOUtil;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.BUNDLE_FEATURE_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.FEATURE_REGION_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.IDBSNVER_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.PROPERTIES_RESOURCE_PREFIX;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.REGION_PACKAGE_FILENAME;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class RegionPrinterTest {
 
@@ -82,10 +82,14 @@ public class RegionPrinterTest {
         String r = getClass().getResource("/regions1.properties").toURI().toString();
 
         when(bundleContext.getBundle()).thenReturn(mock(Bundle.class));
-        when(bundleContext.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).thenReturn(e);
-        when(bundleContext.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).thenReturn(b);
-        when(bundleContext.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).thenReturn(f);
-        when(bundleContext.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).thenReturn(r);
+        when(bundleContext.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME))
+                .thenReturn(e);
+        when(bundleContext.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME))
+                .thenReturn(b);
+        when(bundleContext.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME))
+                .thenReturn(f);
+        when(bundleContext.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME))
+                .thenReturn(r);
 
         regionConfiguration = new RegionConfiguration(bundleContext);
 

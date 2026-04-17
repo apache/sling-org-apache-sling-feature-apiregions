@@ -18,15 +18,6 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.Version;
-import org.osgi.framework.namespace.PackageNamespace;
-import org.osgi.framework.wiring.BundleCapability;
-import org.osgi.framework.wiring.BundleRequirement;
-import org.osgi.framework.wiring.BundleRevision;
-
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,16 +30,27 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.Version;
+import org.osgi.framework.namespace.PackageNamespace;
+import org.osgi.framework.wiring.BundleCapability;
+import org.osgi.framework.wiring.BundleRequirement;
+import org.osgi.framework.wiring.BundleRevision;
+
 import static org.junit.Assert.assertEquals;
 
 public class ResolverHookImplTest {
     @Test
     public void testProvidingFeatureHasNoRegionsSoEveryoneCanAccess() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle", new Version(1,0,0)), Collections.singletonList("b1"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b1"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("requiring.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b1", Collections.singleton("f1"));
@@ -60,7 +62,8 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("*")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("*")));
 
         // b2 is in r2, it requires a capability that is provided by b1.
         // b1 is in a feature, but that feature is not in any region so it can provide access.
@@ -74,10 +77,12 @@ public class ResolverHookImplTest {
     @Test
     public void testProvidingBundleHasNoFeatureSoEveryoneCanAccess() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle", new Version(1,0,0)), Collections.singletonList("b1"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b1"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("requiring.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b2", Collections.singleton("f2"));
@@ -88,7 +93,8 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 is in r2, it requires a capability that is provided by b1.
         // b1 is not in any feature so it can provide access.
@@ -102,10 +108,12 @@ public class ResolverHookImplTest {
     @Test
     public void testProvidingFeatureHasNoRegionsSoEveryoneCanAccess3() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle", new Version(1,0,0)), Collections.singletonList("b1"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b1"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("requiring.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b1", Collections.singleton("f1"));
@@ -118,7 +126,8 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 is in r2, it requires a capability that is provided by b1.
         // b1 is in a feature that has an empty region set, any region so it can provide access.
@@ -132,10 +141,12 @@ public class ResolverHookImplTest {
     @Test
     public void testProvidingFeatureHasNoExportsSoOtherFeatureCannotAccess() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle", new Version(1,0,0)), Collections.singletonList("b1"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b1"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("requiring.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b1", Collections.singleton("f1"));
@@ -148,7 +159,8 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 is in r2, it requires a capability that is provided by b1.
         // b1 is also in r2 but is not exporting the package in there, so b2 should not see the package.
@@ -156,21 +168,27 @@ public class ResolverHookImplTest {
         BundleCapability cap1 = mockCapability("org.apache.sling.test", "b1", bsnvermap);
         List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1));
         rh.filterMatches(req1, candidates1);
-        assertEquals("The exported package is not exported in any region, and b1 is in r2 so b2 should not see the package as its feature-private",
-                0, candidates1.size());
+        assertEquals(
+                "The exported package is not exported in any region, and b1 is in r2 so b2 should not see the package as its feature-private",
+                0,
+                candidates1.size());
     }
 
     @Test
     public void testRegionHasPrecedenceOverGlobal() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.otherfeature", new Version(1,0,0)), Collections.singletonList("b10"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.infeature", new Version(1,0,0)), Collections.singletonList("b11"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.inglobal", new Version(1,0,0)), Collections.singletonList("b19"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.otherfeature", new Version(1, 0, 0)),
+                Collections.singletonList("b10"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.infeature", new Version(1, 0, 0)),
+                Collections.singletonList("b11"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.inglobal", new Version(1, 0, 0)),
+                Collections.singletonList("b19"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("requiring.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b10", Collections.singleton("f10"));
@@ -188,14 +206,16 @@ public class ResolverHookImplTest {
         rpmap.put("r2", new HashSet<>(Arrays.asList("xxx", "yyy", "zzz")));
         rpmap.put("r3", new HashSet<>(Arrays.asList("org.foo.bar", "zzz")));
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 needs to resolve to 'org.foo.bar' package. b2 is in region r1.
         // The package is provided by 3 bundles:
         //   b10 provides it but is not in a matching region
         //   b11 provides it and has a matching region
         //   b19 provides it in the global region
-        // Only b11 should provide the capability. Even though b19 provides it from the global region, if there is an overlapping
+        // Only b11 should provide the capability. Even though b19 provides it from the global region, if there is an
+        // overlapping
         // specific region then the global region should not be used
         BundleRequirement req1 = mockRequirement("b2", bsnvermap);
         BundleCapability cap1 = mockCapability("org.foo.bar", "b10", bsnvermap);
@@ -204,22 +224,28 @@ public class ResolverHookImplTest {
         List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1, cap2, cap3));
         rh.filterMatches(req1, candidates1);
 
-        assertEquals("Only the capability coming from bundle b11 should be selected, b10 is in a different region and b19 is in global "
-                + "which should be excluded as there is a capability in a matching region.",
-                Collections.singletonList(cap2), candidates1);
+        assertEquals(
+                "Only the capability coming from bundle b11 should be selected, b10 is in a different region and b19 is in global "
+                        + "which should be excluded as there is a capability in a matching region.",
+                Collections.singletonList(cap2),
+                candidates1);
     }
 
     @Test
     public void testRegionHasPrecedenceOverGlobalRegionOrderNotSet() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.otherfeature", new Version(1,0,0)), Collections.singletonList("b10"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.infeature", new Version(1,0,0)), Collections.singletonList("b11"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.inglobal", new Version(1,0,0)), Collections.singletonList("b19"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.otherfeature", new Version(1, 0, 0)),
+                Collections.singletonList("b10"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.infeature", new Version(1, 0, 0)),
+                Collections.singletonList("b11"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.inglobal", new Version(1, 0, 0)),
+                Collections.singletonList("b19"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("requiring.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b10", Collections.singleton("f10"));
@@ -236,14 +262,16 @@ public class ResolverHookImplTest {
         rpmap.put("r2", new HashSet<>(Arrays.asList("xxx", "yyy", "zzz")));
         rpmap.put("r3", new HashSet<>(Arrays.asList("org.foo.bar", "zzz")));
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 needs to resolve to 'org.foo.bar' package. b2 is in region r1.
         // The package is provided by 3 bundles:
         //   b10 provides it but is not in a matching region
         //   b11 provides it and has a matching region
         //   b19 provides it in the global region
-        // Only b11 should provide the capability. Even though b19 provides it from the global region, if there is an overlapping
+        // Only b11 should provide the capability. Even though b19 provides it from the global region, if there is an
+        // overlapping
         // specific region then the global region should not be used
         BundleRequirement req1 = mockRequirement("b2", bsnvermap);
         BundleCapability cap1 = mockCapability("org.foo.bar", "b10", bsnvermap);
@@ -252,18 +280,22 @@ public class ResolverHookImplTest {
         List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1, cap2, cap3));
         rh.filterMatches(req1, candidates1);
 
-        assertEquals("Only the capability coming from bundle b11 should be selected, b10 is in a different region and b19 is in global "
-                + "which should be excluded as there is a capability in a matching region.",
-                Collections.singletonList(cap2), candidates1);
+        assertEquals(
+                "Only the capability coming from bundle b11 should be selected, b10 is in a different region and b19 is in global "
+                        + "which should be excluded as there is a capability in a matching region.",
+                Collections.singletonList(cap2),
+                candidates1);
     }
 
     @Test
     public void testOwnBundleInRegionHasPrecedenceOverGlobal() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.infeature", new Version(1,0,0)), Collections.singletonList("b1"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.inglobal", new Version(1,0,0)), Collections.singletonList("b2"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.infeature", new Version(1, 0, 0)),
+                Collections.singletonList("b1"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.inglobal", new Version(1, 0, 0)),
+                Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b1", Collections.singleton("f1"));
@@ -274,7 +306,8 @@ public class ResolverHookImplTest {
 
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         BundleRequirement req1 = mockRequirement("b1", bsnvermap);
         BundleCapability cap1 = mockCapability("org.foo.bar", "b1", bsnvermap);
@@ -282,20 +315,25 @@ public class ResolverHookImplTest {
         List<BundleCapability> candidates = new ArrayList<>(Arrays.asList(cap1, cap2));
         rh.filterMatches(req1, candidates);
 
-        assertEquals("Only the candidate from b1 should be selected, even through b2 is in the global region, "
-                + "because b1 is not exported and as such more specific",
-                Collections.singletonList(cap1), candidates);
+        assertEquals(
+                "Only the candidate from b1 should be selected, even through b2 is in the global region, "
+                        + "because b1 is not exported and as such more specific",
+                Collections.singletonList(cap1),
+                candidates);
     }
 
     @Test
     public void testOwnFeatureHasPrecendenceOverGlobal() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.infeature", new Version(1,0,0)), Collections.singletonList("b11"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.inglobal", new Version(1,0,0)), Collections.singletonList("b19"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.infeature", new Version(1, 0, 0)),
+                Collections.singletonList("b11"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.inglobal", new Version(1, 0, 0)),
+                Collections.singletonList("b19"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("requiring.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b11", Collections.singleton("f1"));
@@ -308,7 +346,8 @@ public class ResolverHookImplTest {
         Map<String, Set<String>> rpmap = new HashMap<>();
         rpmap.put("r1", Collections.emptySet());
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 needs to resolve 'org.foo.bar' and there are 2 candidates:
         // b11 is in the same feature as b2
@@ -320,20 +359,25 @@ public class ResolverHookImplTest {
         List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1, cap2));
         rh.filterMatches(req1, candidates1);
 
-        assertEquals("Only b11 should be selected as its from the same region as b2",
-                Collections.singletonList(cap1), candidates1);
+        assertEquals(
+                "Only b11 should be selected as its from the same region as b2",
+                Collections.singletonList(cap1),
+                candidates1);
     }
 
     @Test
     public void testGlobalAndNonAPIRegionsFeatureAreEqual() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
 
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.infeature", new Version(1,0,0)), Collections.singletonList("b101"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.inglobal", new Version(1,0,0)), Collections.singletonList("b102"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b99"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.infeature", new Version(1, 0, 0)),
+                Collections.singletonList("b101"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.inglobal", new Version(1, 0, 0)),
+                Collections.singletonList("b102"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("requiring.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b99"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b99", Collections.singleton("f1"));
@@ -347,7 +391,8 @@ public class ResolverHookImplTest {
         rpmap.put("r1", Collections.singleton("org.blah.blah"));
         rpmap.put(RegionConstants.GLOBAL_REGION, Collections.singleton("org.foo.bar"));
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 needs to resolve 'org.foo.bar' and there are 2 candidates:
         // b101 is in the same feature as b2
@@ -366,14 +411,18 @@ public class ResolverHookImplTest {
     @Test
     public void testMultipleGlobalOptionsOnly() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.otherfeature", new Version(1,0,0)), Collections.singletonList("b10"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.inglobal1", new Version(1,0,0)), Collections.singletonList("b18"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.inglobal2", new Version(1,0,0)), Collections.singletonList("b19"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.otherfeature", new Version(1, 0, 0)),
+                Collections.singletonList("b10"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.inglobal1", new Version(1, 0, 0)),
+                Collections.singletonList("b18"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.inglobal2", new Version(1, 0, 0)),
+                Collections.singletonList("b19"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("requiring.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b10", Collections.singleton("f10"));
@@ -389,7 +438,8 @@ public class ResolverHookImplTest {
         rpmap.put("r2", new HashSet<>(Arrays.asList("xxx", "yyy", "zzz")));
         rpmap.put("r3", new HashSet<>(Arrays.asList("org.foo.bar", "zzz")));
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 needs to resolve to 'org.foo.bar' package. b2 is in region r1.
         // However nobody in r1 exports the package
@@ -403,26 +453,32 @@ public class ResolverHookImplTest {
         List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1, cap2, cap3));
         rh.filterMatches(req1, candidates1);
 
-        assertEquals("Since there are no specific candidates in a matching region, the candidates from "
-                + "the global region should be allowed.",
-                Arrays.asList(cap2, cap3), candidates1);
+        assertEquals(
+                "Since there are no specific candidates in a matching region, the candidates from "
+                        + "the global region should be allowed.",
+                Arrays.asList(cap2, cap3),
+                candidates1);
     }
 
     @Test
     public void testMultipleGlobalOptionsOnly2() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.inglobal1", new Version(1,0,0)), Collections.singletonList("b18"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "providing.bundle.inglobal2", new Version(1,0,0)), Collections.singletonList("b19"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "requiring.bundle", new Version(1,0,0)), Collections.singletonList("b2"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.inglobal1", new Version(1, 0, 0)),
+                Collections.singletonList("b18"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("providing.bundle.inglobal2", new Version(1, 0, 0)),
+                Collections.singletonList("b19"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("requiring.bundle", new Version(1, 0, 0)),
+                Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         Map<String, List<String>> frmap = new HashMap<>();
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 needs to resolve to 'org.foo.bar' package. b2 is in no region.
         // b18 and b19 export the package in the global region. They should both be allowed.
@@ -438,25 +494,35 @@ public class ResolverHookImplTest {
     @Test
     public void testFilterMatches() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("system.bundle", new Version(3,2,1)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("system.bundle", new Version(3, 2, 1)),
                 Collections.singletonList("b0"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("a.b.c", new Version(0,0,0)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("a.b.c", new Version(0, 0, 0)),
                 Collections.singletonList("b7"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("a.bundle", new Version(1,0,0)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("a.bundle", new Version(1, 0, 0)),
                 Collections.singletonList("b8"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("some.other.bundle", new Version(9,9,9,"suffix")),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("some.other.bundle", new Version(9, 9, 9, "suffix")),
                 Collections.singletonList("b9"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("a-bundle", new Version(1,0,0,"SNAPSHOT")),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("a-bundle", new Version(1, 0, 0, "SNAPSHOT")),
                 Collections.singletonList("b10"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("not.in.a.feature", new Version(0,0,1)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("not.in.a.feature", new Version(0, 0, 1)),
                 Collections.singletonList("b11"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("also.not.in.a.feature", new Version(0,0,1)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("also.not.in.a.feature", new Version(0, 0, 1)),
                 Collections.singletonList("b12"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("a.b.c", new Version(1,2,3)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("a.b.c", new Version(1, 2, 3)),
                 Collections.singletonList("b17"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("x.y.z", new Version(9,9,9)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("x.y.z", new Version(9, 9, 9)),
                 Collections.singletonList("b19"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("zzz", new Version(1,0,0)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("zzz", new Version(1, 0, 0)),
                 Collections.singletonList("b20"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
@@ -482,7 +548,8 @@ public class ResolverHookImplTest {
         rpmap.put(RegionConstants.GLOBAL_REGION, Collections.singleton("org.bar.tar"));
         rpmap.put("r3", Collections.singleton("xyz"));
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet()));
+        ResolverHookImpl rh =
+                new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet()));
 
         // Check that we can get the capability from another bundle in the same region
         // where that region exports the package
@@ -536,7 +603,7 @@ public class ResolverHookImplTest {
         assertEquals(Collections.singletonList(bc5), c5);
 
         // Check that we cannot get at a capability in a region from a bundle not in a feature
-        BundleRequirement req6 = mockRequirement(6, "bundle.not.in.feature", new Version(2,0,0));
+        BundleRequirement req6 = mockRequirement(6, "bundle.not.in.feature", new Version(2, 0, 0));
         BundleCapability bc6 = mockCapability("org.foo", "b9", bsnvermap);
         Collection<BundleCapability> c6 = new ArrayList<>(Arrays.asList(bc6));
         rh.filterMatches(req6, c6);
@@ -590,7 +657,7 @@ public class ResolverHookImplTest {
 
         // Check that anyone can get a capability from a bundle not in a feature
         BundleRequirement req13 = mockRequirement("b9", bsnvermap);
-        BundleCapability bc13 = mockCapability("some.package", 999, "no.in.any.feature", new Version(1,0,0));
+        BundleCapability bc13 = mockCapability("some.package", 999, "no.in.any.feature", new Version(1, 0, 0));
         Collection<BundleCapability> c13 = new ArrayList<>(Arrays.asList(bc13));
         rh.filterMatches(req13, c13);
         assertEquals(Collections.singletonList(bc13), c13);
@@ -599,9 +666,11 @@ public class ResolverHookImplTest {
     @Test
     public void testMultipleRegionsNoneMatching() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("bundle.1", new Version(1,0,0)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("bundle.1", new Version(1, 0, 0)),
                 Collections.singletonList("b1"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("bundle.2", new Version(1,0,0)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("bundle.2", new Version(1, 0, 0)),
                 Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
@@ -618,7 +687,8 @@ public class ResolverHookImplTest {
         rpmap.put(RegionConstants.GLOBAL_REGION, Collections.singleton("org.something"));
         rpmap.put("org.foo.blah", Collections.singleton("org.something"));
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet()));
+        ResolverHookImpl rh =
+                new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.emptySet()));
 
         BundleRequirement req0 = mockRequirement("b1", bsnvermap);
         BundleCapability cap0 = mockCapability("org.test", "b2", bsnvermap);
@@ -639,9 +709,12 @@ public class ResolverHookImplTest {
         pkgs.add("org.foo.zar");
         regionPackageMap.put("r3", pkgs);
 
-        ResolverHookImpl rh = new ResolverHookImpl(
-                new RegionConfiguration(Collections.<Map.Entry<String, Version>, List<String>>emptyMap(),
-                Collections.<String, Set<String>>emptyMap(), featureRegionMap, regionPackageMap, Collections.emptySet()));
+        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(
+                Collections.<Map.Entry<String, Version>, List<String>>emptyMap(),
+                Collections.<String, Set<String>>emptyMap(),
+                featureRegionMap,
+                regionPackageMap,
+                Collections.emptySet()));
 
         assertEquals(Collections.emptyList(), rh.getRegionsForPackage(null, "f1"));
         assertEquals(Collections.emptyList(), rh.getRegionsForPackage("org.foo", "f1"));
@@ -655,11 +728,14 @@ public class ResolverHookImplTest {
     @Test
     public void testDefaultRegions() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("b98", new Version(1, 0, 0)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("b98", new Version(1, 0, 0)),
                 Collections.singletonList("b98"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("b99", new Version(1, 2, 3)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("b99", new Version(1, 2, 3)),
                 Collections.singletonList("b99"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>("b100", new Version(4, 5, 6)),
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("b100", new Version(4, 5, 6)),
                 Collections.singletonList("b100"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
@@ -675,8 +751,8 @@ public class ResolverHookImplTest {
         rpmap.put("r1", Collections.singleton("org.test"));
         rpmap.put("r2", Collections.singleton("org.test"));
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap,
-                new HashSet<>(Arrays.asList("r0", "r1"))));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, new HashSet<>(Arrays.asList("r0", "r1"))));
 
         // b99 is not in any region itself and tries to resolve to b100 which is in r1
         // b99 can resolve to b100 because 'r1' is listed as a default region in the
@@ -685,8 +761,10 @@ public class ResolverHookImplTest {
         BundleCapability cap = mockCapability("org.test", "b100", bsnvermap);
         List<BundleCapability> candidates = new ArrayList<>(Arrays.asList(cap));
         rh.filterMatches(req, candidates);
-        assertEquals("b99 should be able to wire to b100, as the default region is r1, which is what b100 is in. ",
-                Collections.singletonList(cap), candidates);
+        assertEquals(
+                "b99 should be able to wire to b100, as the default region is r1, which is what b100 is in. ",
+                Collections.singletonList(cap),
+                candidates);
 
         // b99 is not in any region and tries to resolve to b98, which is in r2
         // b99 can't resolve because b2 is not in the default regions and it's not in
@@ -695,31 +773,33 @@ public class ResolverHookImplTest {
         BundleCapability cap1 = mockCapability("org.test", "b98", bsnvermap);
         List<BundleCapability> candidates1 = new ArrayList<>(Arrays.asList(cap1));
         rh.filterMatches(req1, candidates1);
-        assertEquals("b99 should not be able to wire to b98, as this is in region r2, which is not in the default regions r1 and r3",
-                0, candidates1.size());
+        assertEquals(
+                "b99 should not be able to wire to b98, as this is in region r2, which is not in the default regions r1 and r3",
+                0,
+                candidates1.size());
     }
 
     @Test
     public void testGetFeaturesForBundleMultiSession() {
         String bsn = "foo";
-        Version bver = new Version(1,2,3);
+        Version bver = new Version(1, 2, 3);
         String blocation = "something://foobar";
 
         String bsn2 = "bar.bar";
-        Version bver2 = new Version(1,0,0);
+        Version bver2 = new Version(1, 0, 0);
 
         Map<Map.Entry<String, Version>, List<String>> bsnVerMap = new HashMap<>();
         Map<String, Set<String>> bundleFeatureMap = new HashMap<>();
-        bsnVerMap.put(new AbstractMap.SimpleEntry<String, Version>(bsn, bver),
-                Collections.singletonList("myorg:foo:1.2.3"));
-        bsnVerMap.put(new AbstractMap.SimpleEntry<String, Version>(bsn2, bver2),
+        bsnVerMap.put(
+                new AbstractMap.SimpleEntry<String, Version>(bsn, bver), Collections.singletonList("myorg:foo:1.2.3"));
+        bsnVerMap.put(
+                new AbstractMap.SimpleEntry<String, Version>(bsn2, bver2),
                 Collections.singletonList("myorg:bar.bar:1.0.0"));
         bundleFeatureMap.put("myorg:foo:1.2.3", new HashSet<>(Arrays.asList("feature1")));
-        bundleFeatureMap.put("myorg:bar.bar:1.0.0", new HashSet<>(
-                Arrays.asList("feature3", "feature4")));
+        bundleFeatureMap.put("myorg:bar.bar:1.0.0", new HashSet<>(Arrays.asList("feature3", "feature4")));
 
-        RegionConfiguration cfg = new RegionConfiguration(bsnVerMap, bundleFeatureMap,
-                Collections.emptyMap(), Collections.emptyMap(), Collections.emptySet());
+        RegionConfiguration cfg = new RegionConfiguration(
+                bsnVerMap, bundleFeatureMap, Collections.emptyMap(), Collections.emptyMap(), Collections.emptySet());
 
         RegionEnforcer re = new RegionEnforcer(cfg);
 
@@ -735,7 +815,7 @@ public class ResolverHookImplTest {
         // Try a bundle with a different version, same location
         Bundle b2 = Mockito.mock(Bundle.class);
         Mockito.when(b2.getSymbolicName()).thenReturn(bsn);
-        Mockito.when(b2.getVersion()).thenReturn(new Version(1,4,0));
+        Mockito.when(b2.getVersion()).thenReturn(new Version(1, 4, 0));
         Mockito.when(b2.getLocation()).thenReturn(blocation);
 
         // Obtain a new ResolverHookImpl to mimic multiple resolve sessions
@@ -764,10 +844,12 @@ public class ResolverHookImplTest {
     @Test
     public void testRegionOrderInheritance() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "b1", new Version(1,0,0)), Collections.singletonList("b1"));
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "b2", new Version(1,0,0)), Collections.singletonList("b2"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("b1", new Version(1, 0, 0)),
+                Collections.singletonList("b1"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("b2", new Version(1, 0, 0)),
+                Collections.singletonList("b2"));
 
         Map<String, Set<String>> bfmap = new HashMap<>();
         bfmap.put("b1", Collections.singleton("g:f1:1"));
@@ -782,7 +864,8 @@ public class ResolverHookImplTest {
         rpmap.put("internal", Collections.singleton("xyz"));
         rpmap.put("deprecated", Collections.singleton("abc"));
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
 
         // b2 needs to resolve to the "abc" package, which is exported into the 'deprecated' region.
         // f2 doesn't directly see the 'deprecated' region (only internal), but since it's declared before
@@ -799,33 +882,36 @@ public class ResolverHookImplTest {
     @Test
     public void testEmptyCandidates() {
         Map<Entry<String, Version>, List<String>> bsnvermap = new HashMap<>();
-        bsnvermap.put(new AbstractMap.SimpleEntry<String,Version>(
-                "b1", new Version(1,0,0)), Collections.singletonList("b1"));
+        bsnvermap.put(
+                new AbstractMap.SimpleEntry<String, Version>("b1", new Version(1, 0, 0)),
+                Collections.singletonList("b1"));
         Map<String, Set<String>> bfmap = new HashMap<>();
         Map<String, List<String>> frmap = new HashMap<>();
         Map<String, Set<String>> rpmap = new HashMap<>();
 
-        ResolverHookImpl rh = new ResolverHookImpl(new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
+        ResolverHookImpl rh = new ResolverHookImpl(
+                new RegionConfiguration(bsnvermap, bfmap, frmap, rpmap, Collections.singleton("global")));
         BundleRequirement req1 = mockRequirement("b1", bsnvermap);
         List<BundleCapability> candidates1 = new ArrayList<>();
         rh.filterMatches(req1, candidates1);
         assertEquals("There were no candidates, there still are none", 0, candidates1.size());
     }
 
-    private BundleCapability mockCapability(String pkgName, String bid, Map<Entry<String, Version>, List<String>> bsnvermap) {
+    private BundleCapability mockCapability(
+            String pkgName, String bid, Map<Entry<String, Version>, List<String>> bsnvermap) {
         for (Map.Entry<Map.Entry<String, Version>, List<String>> entry : bsnvermap.entrySet()) {
             if (entry.getValue().contains(bid)) {
                 // Remove first letter and use rest as bundle ID
                 long id = Long.parseLong(bid.substring(1));
-                return mockCapability(pkgName, id, entry.getKey().getKey(), entry.getKey().getValue());
+                return mockCapability(
+                        pkgName, id, entry.getKey().getKey(), entry.getKey().getValue());
             }
         }
         throw new IllegalStateException("Bundle not found " + bid);
     }
 
     private BundleCapability mockCapability(String pkg, long bundleID, String bsn, Version version) {
-        Map<String, Object> attrs =
-                Collections.<String, Object>singletonMap(PackageNamespace.PACKAGE_NAMESPACE, pkg);
+        Map<String, Object> attrs = Collections.<String, Object>singletonMap(PackageNamespace.PACKAGE_NAMESPACE, pkg);
 
         Bundle bundle = Mockito.mock(Bundle.class);
         Mockito.when(bundle.getBundleId()).thenReturn(bundleID);
@@ -848,7 +934,8 @@ public class ResolverHookImplTest {
             if (entry.getValue().contains(bid)) {
                 // Remove first letter and use rest as bundle ID
                 long id = Long.parseLong(bid.substring(1));
-                return mockRequirement(id, entry.getKey().getKey(), entry.getKey().getValue());
+                return mockRequirement(
+                        id, entry.getKey().getKey(), entry.getKey().getValue());
             }
         }
         throw new IllegalStateException("Bundle not found " + bid);

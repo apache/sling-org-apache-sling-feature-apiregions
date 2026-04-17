@@ -47,7 +47,7 @@ import org.osgi.resource.Resource;
 import org.osgi.util.tracker.ServiceTracker;
 import org.osgi.util.tracker.ServiceTrackerCustomizer;
 
-@Header(name=Constants.EXTENSION_BUNDLE_ACTIVATOR, value="${@class}")
+@Header(name = Constants.EXTENSION_BUNDLE_ACTIVATOR, value = "${@class}")
 public class Activator implements BundleActivator, FrameworkListener {
     static final String CONFIG_ADMIN_PKG_NAME = "org.osgi.service.cm";
     static final String MANAGED_SERVICE_CLASS_NAME = CONFIG_ADMIN_PKG_NAME + ".ManagedService";
@@ -78,36 +78,34 @@ public class Activator implements BundleActivator, FrameworkListener {
         registerHook();
 
         registerWebconsoleStatus();
-        this.configAdminTracker = new ServiceTracker<>(context, CONFIG_ADMIN_CLASS_NAME, new ServiceTrackerCustomizer<Object, Object>() {
+        this.configAdminTracker =
+                new ServiceTracker<>(context, CONFIG_ADMIN_CLASS_NAME, new ServiceTrackerCustomizer<Object, Object>() {
 
-            @Override
-            public Object addingService(final ServiceReference<Object> reference) {
-                final Object cfgAdmin = bundleContext.getService(reference);
-                if ( cfgAdmin != null ) {
-                    return registerConfigurationListener(cfgAdmin);
-                }
-                return null;
-            }
+                    @Override
+                    public Object addingService(final ServiceReference<Object> reference) {
+                        final Object cfgAdmin = bundleContext.getService(reference);
+                        if (cfgAdmin != null) {
+                            return registerConfigurationListener(cfgAdmin);
+                        }
+                        return null;
+                    }
 
-            @Override
-            public void modifiedService(final ServiceReference<Object> reference, final Object reg) {
-                // ignore
-            }
+                    @Override
+                    public void modifiedService(final ServiceReference<Object> reference, final Object reg) {
+                        // ignore
+                    }
 
-            @Override
-            public void removedService(final ServiceReference<Object> reference, final Object reg) {
-                if ( reg != null ) {
-                    ((ServiceRegistration<?>)reg).unregister();
-                }
-            }
-        });
+                    @Override
+                    public void removedService(final ServiceReference<Object> reference, final Object reg) {
+                        if (reg != null) {
+                            ((ServiceRegistration<?>) reg).unregister();
+                        }
+                    }
+                });
         this.configAdminTracker.open();
 
         context.addFrameworkListener(this);
-
-        
     }
-
 
     @Override
     public synchronized void stop(BundleContext context) throws Exception {
@@ -116,7 +114,7 @@ public class Activator implements BundleActivator, FrameworkListener {
         if (configuration != null) {
             configuration.storeLocationToConfigMap(context);
         }
-        if ( this.configAdminTracker != null ) {
+        if (this.configAdminTracker != null) {
             this.configAdminTracker.close();
         }
     }
@@ -130,26 +128,28 @@ public class Activator implements BundleActivator, FrameworkListener {
     }
 
     synchronized void registerHook() {
-        if (hookRegistration != null)
-            return; // There is already a hook, no need to re-register
+        if (hookRegistration != null) return; // There is already a hook, no need to re-register
 
         if (bundleContext.getProperty(REGIONS_PROPERTY_NAME) == null) {
-            LOG.log(Level.WARNING, "API Regions not enabled. To enable set framework property: " + REGIONS_PROPERTY_NAME);
+            LOG.log(
+                    Level.WARNING,
+                    "API Regions not enabled. To enable set framework property: " + REGIONS_PROPERTY_NAME);
             return; // Component not enabled
         }
 
         RegionEnforcer enforcer = new RegionEnforcer(this.configuration);
-        hookRegistration = bundleContext.registerService(ResolverHookFactory.class, enforcer, this.configuration.getRegistrationProperties());
+        hookRegistration = bundleContext.registerService(
+                ResolverHookFactory.class, enforcer, this.configuration.getRegistrationProperties());
     }
 
     synchronized void registerWebconsoleStatus() {
 
-        if (webconsoleRegistration != null){
+        if (webconsoleRegistration != null) {
             return; // There is already a hook, no need to re-register
         }
 
         LOG.info("Registering region printer");
-        RegionPrinter printer = new RegionPrinter(bundleContext,configuration);
+        RegionPrinter printer = new RegionPrinter(bundleContext, configuration);
 
         final Dictionary<String, String> serviceProps = new Hashtable<>();
         serviceProps.put("felix.webconsole.label", RegionPrinter.PATH);
@@ -208,15 +208,15 @@ public class Activator implements BundleActivator, FrameworkListener {
                     Class<?> mdDecl = method.getDeclaringClass();
                     if (mdDecl.equals(Object.class)) {
                         switch (method.getName()) {
-                            case "equals" :
+                            case "equals":
                                 return proxy == args[0];
-                            case "hashCode" :
+                            case "hashCode":
                                 return System.identityHashCode(proxy);
-                            case "toString" :
+                            case "toString":
                                 return "Proxy for " + msClass;
-                            default :
-                                throw new UnsupportedOperationException("Method " + method
-                                    + " not supported on proxy for " + msClass);
+                            default:
+                                throw new UnsupportedOperationException(
+                                        "Method " + method + " not supported on proxy for " + msClass);
                         }
                     }
                     if ("updated".equals(method.getName()) && args.length == 1) {
@@ -225,7 +225,7 @@ public class Activator implements BundleActivator, FrameworkListener {
                             registerHook();
                             registerWebconsoleStatus();
                         } else if (arg instanceof Dictionary) {
-                            Dictionary<?,?> props = (Dictionary<?,?>) args[0];
+                            Dictionary<?, ?> props = (Dictionary<?, ?>) args[0];
                             Object disabled = props.get("disable");
                             if ("true".equals(disabled)) {
                                 unregisterHook();
@@ -261,64 +261,70 @@ public class Activator implements BundleActivator, FrameworkListener {
             final Method eventGetPidMethod = eventClass.getDeclaredMethod("getPid");
 
             // ConfigurationAdmin
-            final Method caGetConfigMethod = cfgAdmin.getClass().getDeclaredMethod("getConfiguration", String.class, String.class);
-            final Method caListConfigcMethod = cfgAdmin.getClass().getDeclaredMethod("listConfigurations", String.class);
+            final Method caGetConfigMethod =
+                    cfgAdmin.getClass().getDeclaredMethod("getConfiguration", String.class, String.class);
+            final Method caListConfigcMethod =
+                    cfgAdmin.getClass().getDeclaredMethod("listConfigurations", String.class);
 
             // Configuration
             final Class<?> cfgClass = cfgAdmin.getClass().getClassLoader().loadClass(CFG_CLASS_NAME);
             final Method cfgGetPropertiesMethod = cfgClass.getDeclaredMethod("getProperties");
             final Method cfgGetPidMethod = cfgClass.getDeclaredMethod("getPid");
 
-            Object msf = Proxy.newProxyInstance(listenerClass.getClassLoader(), new Class[] {listenerClass}, new InvocationHandler() {
-                @Override
-                public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                    Class<?> mdDecl = method.getDeclaringClass();
-                    if (mdDecl.equals(Object.class)) {
-                        switch (method.getName()) {
-                            case "equals" :
-                                return proxy == args[0];
-                            case "hashCode" :
-                                return System.identityHashCode(proxy);
-                            case "toString" :
-                                return "Proxy for " + listenerClass;
-                            default :
-                                throw new UnsupportedOperationException("Method " + method
-                                    + " not supported on proxy for " + listenerClass);
-                        }
-                    }
-                    if ("configurationEvent".equals(method.getName()) && args.length == 1) {
-                        // configuration event
-                        final Object event = args[0];
-
-                        // check factory pid first
-                        final String factoryPid = (String)eventGetFactoryPidMethod.invoke(event, (Object[])null);
-                        if ( FACTORY_PID.equals(factoryPid) ) {
-                            final String pid = (String)eventGetPidMethod.invoke(event, (Object[])null);
-                            final Object eventType = eventGetTypeMethod.invoke(event, (Object[])null);
-                            if (eventType.equals(1)) {
-                                // update
-                                final Object cfg = caGetConfigMethod.invoke(cfgAdmin, new Object[] {pid, null});
-                                @SuppressWarnings("unchecked")
-                                final Dictionary<String, Object> props = (Dictionary<String, Object>)cfgGetPropertiesMethod.invoke(cfg, (Object[])null);
-                                configuration.setConfig(pid, props);
-                            } else if ( eventType.equals(2)) {
-                                // delete
-                                configuration.removeConfig(pid);
+            Object msf = Proxy.newProxyInstance(
+                    listenerClass.getClassLoader(), new Class[] {listenerClass}, new InvocationHandler() {
+                        @Override
+                        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                            Class<?> mdDecl = method.getDeclaringClass();
+                            if (mdDecl.equals(Object.class)) {
+                                switch (method.getName()) {
+                                    case "equals":
+                                        return proxy == args[0];
+                                    case "hashCode":
+                                        return System.identityHashCode(proxy);
+                                    case "toString":
+                                        return "Proxy for " + listenerClass;
+                                    default:
+                                        throw new UnsupportedOperationException(
+                                                "Method " + method + " not supported on proxy for " + listenerClass);
+                                }
                             }
+                            if ("configurationEvent".equals(method.getName()) && args.length == 1) {
+                                // configuration event
+                                final Object event = args[0];
+
+                                // check factory pid first
+                                final String factoryPid =
+                                        (String) eventGetFactoryPidMethod.invoke(event, (Object[]) null);
+                                if (FACTORY_PID.equals(factoryPid)) {
+                                    final String pid = (String) eventGetPidMethod.invoke(event, (Object[]) null);
+                                    final Object eventType = eventGetTypeMethod.invoke(event, (Object[]) null);
+                                    if (eventType.equals(1)) {
+                                        // update
+                                        final Object cfg = caGetConfigMethod.invoke(cfgAdmin, new Object[] {pid, null});
+                                        @SuppressWarnings("unchecked")
+                                        final Dictionary<String, Object> props = (Dictionary<String, Object>)
+                                                cfgGetPropertiesMethod.invoke(cfg, (Object[]) null);
+                                        configuration.setConfig(pid, props);
+                                    } else if (eventType.equals(2)) {
+                                        // delete
+                                        configuration.removeConfig(pid);
+                                    }
+                                }
+                            }
+                            return null;
                         }
-                    }
-                    return null;
-                }
-            });
+                    });
             final ServiceRegistration<?> reg = bundleContext.registerService(CFG_LISTENER_CLASS_NAME, msf, null);
             // get existing configurations
             final Object result = caListConfigcMethod.invoke(cfgAdmin, "(service.factoryPid=" + FACTORY_PID + ")");
-            if ( result != null ) {
-                for(int i=0; i<Array.getLength(result); i++) {
+            if (result != null) {
+                for (int i = 0; i < Array.getLength(result); i++) {
                     final Object cfg = Array.get(result, i);
-                    final String pid = (String)cfgGetPidMethod.invoke(cfg, (Object[])null);
+                    final String pid = (String) cfgGetPidMethod.invoke(cfg, (Object[]) null);
                     @SuppressWarnings("unchecked")
-                    final Dictionary<String, Object> props = (Dictionary<String, Object>)cfgGetPropertiesMethod.invoke(cfg, (Object[])null);
+                    final Dictionary<String, Object> props =
+                            (Dictionary<String, Object>) cfgGetPropertiesMethod.invoke(cfg, (Object[]) null);
                     configuration.setConfig(pid, props);
                 }
             }
@@ -339,8 +345,8 @@ public class Activator implements BundleActivator, FrameworkListener {
 
             @Override
             public Map<String, String> getDirectives() {
-                return Collections.singletonMap("filter",
-                        "(" + PackageNamespace.PACKAGE_NAMESPACE + "=" + CONFIG_ADMIN_PKG_NAME + ")");
+                return Collections.singletonMap(
+                        "filter", "(" + PackageNamespace.PACKAGE_NAMESPACE + "=" + CONFIG_ADMIN_PKG_NAME + ")");
             }
 
             @Override
@@ -352,7 +358,6 @@ public class Activator implements BundleActivator, FrameworkListener {
             public Resource getResource() {
                 return null;
             }
-
         };
         return cmReq;
     }

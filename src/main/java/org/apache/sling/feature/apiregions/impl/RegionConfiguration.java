@@ -74,20 +74,24 @@ class RegionConfiguration {
     // to be used. The configuration is based on bsn+version. If the bundle is updated
     // the original bsn+version associated with the location still needs to be used.
     // It is populated dynamically as bundles are getting resolved.
-    private final ConcurrentMap<String, Map.Entry<String, Version>> bundleLocationConfigMap =
-            new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Map.Entry<String, Version>> bundleLocationConfigMap = new ConcurrentHashMap<>();
 
     private final String toGlobalConfig;
 
-    RegionConfiguration(Map<Entry<String, Version>, List<String>> bsnVerMap, Map<String, Set<String>> bundleFeatureMap,
-                        Map<String, List<String>> featureRegionMap, Map<String, Set<String>> regionPackageMap, Set<String> defaultRegions) {
+    RegionConfiguration(
+            Map<Entry<String, Version>, List<String>> bsnVerMap,
+            Map<String, Set<String>> bundleFeatureMap,
+            Map<String, List<String>> featureRegionMap,
+            Map<String, Set<String>> regionPackageMap,
+            Set<String> defaultRegions) {
         this.defaultRegions = defaultRegions;
 
         this.baseBsnVerMap = new HashMap<>(bsnVerMap);
         this.baseBundleFeatureMap = new HashMap<>(bundleFeatureMap);
         this.baseFeatureRegionMap = new HashMap<>(featureRegionMap);
         this.baseRegionPackageMap = new HashMap<>(regionPackageMap);
-        this.globalRegionOrder = new ArrayList<>(this.baseFeatureRegionMap.getOrDefault(REGION_ORDER, Collections.emptyList()));
+        this.globalRegionOrder =
+                new ArrayList<>(this.baseFeatureRegionMap.getOrDefault(REGION_ORDER, Collections.emptyList()));
         this.baseFeatureRegionMap.remove(REGION_ORDER);
 
         this.toGlobalConfig = null;
@@ -95,8 +99,7 @@ class RegionConfiguration {
         updateConfiguration();
     }
 
-    RegionConfiguration(final BundleContext context)
-            throws IOException, URISyntaxException {
+    RegionConfiguration(final BundleContext context) throws IOException, URISyntaxException {
         URI idbsnverFile = getDataFileURI(context, RegionConstants.IDBSNVER_FILENAME);
         // Register the location as a service property for diagnostic purposes
         regProps.put(RegionConstants.IDBSNVER_FILENAME, idbsnverFile.toString());
@@ -122,11 +125,12 @@ class RegionConfiguration {
         this.baseBundleFeatureMap = bfm;
         this.baseFeatureRegionMap = frm;
         this.baseRegionPackageMap = rpm;
-        this.globalRegionOrder = new ArrayList<>(this.baseFeatureRegionMap.getOrDefault(REGION_ORDER, Collections.emptyList()));
+        this.globalRegionOrder =
+                new ArrayList<>(this.baseFeatureRegionMap.getOrDefault(REGION_ORDER, Collections.emptyList()));
         this.baseFeatureRegionMap.remove(REGION_ORDER);
 
         this.toGlobalConfig = context.getProperty(RegionConstants.APIREGIONS_JOINGLOBAL);
-        if ( this.toGlobalConfig != null ) {
+        if (this.toGlobalConfig != null) {
             regProps.put(RegionConstants.APIREGIONS_JOINGLOBAL, this.toGlobalConfig);
         }
 
@@ -182,7 +186,7 @@ class RegionConfiguration {
             }
 
             if (ver != null) {
-                return new AbstractMap.SimpleEntry<String,Version>(bsn, ver);
+                return new AbstractMap.SimpleEntry<String, Version>(bsn, ver);
             }
         }
         return null;
@@ -198,7 +202,9 @@ class RegionConfiguration {
 
         Properties p = new Properties();
         for (Map.Entry<String, Map.Entry<String, Version>> entry : bundleLocationConfigMap.entrySet()) {
-            p.setProperty(entry.getKey(), entry.getValue().getKey() + "~" + entry.getValue().getValue());
+            p.setProperty(
+                    entry.getKey(),
+                    entry.getValue().getKey() + "~" + entry.getValue().getValue());
         }
         if (p.size() > 0) {
             try (OutputStream os = new BufferedOutputStream(new FileOutputStream(file))) {
@@ -216,11 +222,11 @@ class RegionConfiguration {
         final Map<String, Set<String>> rpm = cloneMapOfSets(this.baseRegionPackageMap);
 
         // apply configurations
-        for(final Dictionary<String, Object> props : this.factoryConfigs.values()) {
+        for (final Dictionary<String, Object> props : this.factoryConfigs.values()) {
             // bundle id to bsnver
             Object valObj = props.get(RegionConstants.PROP_idbsnver);
-            if ( valObj != null ) {
-                for(final String val : convert(valObj)) {
+            if (valObj != null) {
+                for (final String val : convert(valObj)) {
                     final String[] parts = val.split("=");
                     final String n = parts[0];
                     final String[] bsnver = parts[1].split("~");
@@ -232,19 +238,19 @@ class RegionConfiguration {
 
             // bundle id to features
             valObj = props.get(RegionConstants.PROP_bundleFeatures);
-            if ( valObj != null ) {
+            if (valObj != null) {
                 handleMapConfig(valObj, bfm, HashSet::new);
             }
 
             // feature id to regions
             valObj = props.get(RegionConstants.PROP_featureRegions);
-            if ( valObj != null ) {
+            if (valObj != null) {
                 handleMapConfig(valObj, frm, ArrayList::new);
             }
 
             // region to packages
             valObj = props.get(RegionConstants.PROP_regionPackage);
-            if ( valObj != null ) {
+            if (valObj != null) {
                 handleMapConfig(valObj, rpm, HashSet::new);
             }
         }
@@ -261,16 +267,18 @@ class RegionConfiguration {
         regionPackageMap = unmodifiableMapToSet(rpm);
     }
 
-    private <T extends Collection<String>> void handleMapConfig(Object valObj, Map<String, T> map, Supplier<T> constructor) {
-        for(final String val : convert(valObj)) {
+    private <T extends Collection<String>> void handleMapConfig(
+            Object valObj, Map<String, T> map, Supplier<T> constructor) {
+        for (final String val : convert(valObj)) {
             final String[] parts = val.split("=");
             final String n = parts[0];
-            final List<String> features = parts.length == 1 ? Collections.emptyList() : Arrays.asList(parts[1].split(","));
+            final List<String> features =
+                    parts.length == 1 ? Collections.emptyList() : Arrays.asList(parts[1].split(","));
             addValuesToMap(map, n, features, constructor);
         }
     }
 
-    private static <K,V> Map<K, List<V>> cloneMapOfLists(Map<K, List<V>> m) {
+    private static <K, V> Map<K, List<V>> cloneMapOfLists(Map<K, List<V>> m) {
         final Map<K, List<V>> newMap = new HashMap<>();
         for (Map.Entry<K, List<V>> entry : m.entrySet()) {
             newMap.put(entry.getKey(), new ArrayList<>(entry.getValue()));
@@ -278,7 +286,7 @@ class RegionConfiguration {
         return newMap;
     }
 
-    private static <K,V> Map<K, Set<V>> cloneMapOfSets(Map<K, Set<V>> m) {
+    private static <K, V> Map<K, Set<V>> cloneMapOfSets(Map<K, Set<V>> m) {
         final Map<K, Set<V>> newMap = new HashMap<>();
         for (Map.Entry<K, Set<V>> entry : m.entrySet()) {
             newMap.put(entry.getKey(), new HashSet<>(entry.getValue()));
@@ -286,14 +294,14 @@ class RegionConfiguration {
         return newMap;
     }
 
-    private static <K,V> Map<K, List<V>> unmodifiableMapToList(Map<K, List<V>> m) {
+    private static <K, V> Map<K, List<V>> unmodifiableMapToList(Map<K, List<V>> m) {
         for (Map.Entry<K, List<V>> entry : m.entrySet()) {
             m.put(entry.getKey(), Collections.unmodifiableList(entry.getValue()));
         }
         return Collections.unmodifiableMap(m);
     }
 
-    private static <K,V> Map<K, Set<V>> unmodifiableMapToSet(Map<K, Set<V>> m) {
+    private static <K, V> Map<K, Set<V>> unmodifiableMapToSet(Map<K, Set<V>> m) {
         for (Map.Entry<K, Set<V>> entry : m.entrySet()) {
             m.put(entry.getKey(), Collections.unmodifiableSet(entry.getValue()));
         }
@@ -303,15 +311,15 @@ class RegionConfiguration {
     private void joinRegionsWithGlobal(String toglobal, Map<String, Set<String>> rpm) {
         for (String region : toglobal.split(",")) {
             Set<String> packages = rpm.get(region);
-            if (packages == null)
-                continue;
+            if (packages == null) continue;
 
             addValuesToMap(rpm, RegionConstants.GLOBAL_REGION, packages, HashSet::new);
             rpm.remove(region);
         }
     }
 
-    private static Map<Map.Entry<String, Version>, List<String>> populateBSNVerMap(URI idbsnverFile) throws IOException {
+    private static Map<Map.Entry<String, Version>, List<String>> populateBSNVerMap(URI idbsnverFile)
+            throws IOException {
         Map<Map.Entry<String, Version>, List<String>> m = new HashMap<>();
 
         Properties p = new Properties();
@@ -329,7 +337,8 @@ class RegionConfiguration {
 
     private static void addBsnVerArtifact(
             Map<Map.Entry<String, Version>, List<String>> bsnVerMap,
-            String bundleSymbolicName, String bundleVersion,
+            String bundleSymbolicName,
+            String bundleVersion,
             String artifactId) {
         Version version = Version.valueOf(bundleVersion);
         Map.Entry<String, Version> bsnVer = new AbstractMap.SimpleEntry<>(bundleSymbolicName, version);
@@ -338,8 +347,7 @@ class RegionConfiguration {
             l = new ArrayList<>();
             bsnVerMap.put(bsnVer, l);
         }
-        if (!l.contains(artifactId))
-            l.add(artifactId);
+        if (!l.contains(artifactId)) l.add(artifactId);
     }
 
     private static Map<String, Set<String>> populateBundleFeatureMap(URI bundlesFile) throws IOException {
@@ -354,7 +362,8 @@ class RegionConfiguration {
         return loadMap(regionsFile, HashSet::new);
     }
 
-    private static <T extends Collection<String>> Map<String, T> loadMap(URI propsFile, Supplier<T> constructor) throws IOException {
+    private static <T extends Collection<String>> Map<String, T> loadMap(URI propsFile, Supplier<T> constructor)
+            throws IOException {
         Map<String, T> m = new HashMap<>();
 
         Properties p = new Properties();
@@ -370,7 +379,8 @@ class RegionConfiguration {
         return m;
     }
 
-    private static <T extends Collection<String>> void addValuesToMap(Map<String, T> map, String key, Collection<String> values, Supplier<T> constructor) {
+    private static <T extends Collection<String>> void addValuesToMap(
+            Map<String, T> map, String key, Collection<String> values, Supplier<T> constructor) {
         T bf = map.get(key);
         if (bf == null) {
             bf = constructor.get();
@@ -396,8 +406,7 @@ class RegionConfiguration {
             if (fn.startsWith(RegionConstants.CLASSLOADER_PSEUDO_PROTOCOL)) {
                 // It's using the 'classloader:' protocol looks up the location from the classloader
                 String loc = fn.substring(RegionConstants.CLASSLOADER_PSEUDO_PROTOCOL.length());
-                if (!loc.startsWith("/"))
-                    loc = "/" + loc;
+                if (!loc.startsWith("/")) loc = "/" + loc;
                 fn = getClass().getResource(loc).toString();
             }
             // It's already a URL
@@ -455,8 +464,8 @@ class RegionConfiguration {
     }
 
     private String[] convert(final Object obj) {
-        if ( obj instanceof String[]) {
-            return (String[])obj;
+        if (obj instanceof String[]) {
+            return (String[]) obj;
         }
         return new String[] {obj.toString()};
     }
@@ -477,7 +486,7 @@ class RegionConfiguration {
      */
     public void removeConfig(final String pid) {
         final Dictionary<String, Object> props = this.factoryConfigs.remove(pid);
-        if ( props != null ) {
+        if (props != null) {
             updateConfiguration();
         }
     }

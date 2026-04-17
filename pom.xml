@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="ISO-8859-1"?>
-    <!--
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
         Licensed to the Apache Software Foundation (ASF) under one or more contributor license
         agreements. See the NOTICE file distributed with this work for additional information
         regarding copyright ownership. The ASF licenses this file to you under the Apache License,
@@ -17,7 +17,7 @@
     <parent>
         <groupId>org.apache.sling</groupId>
         <artifactId>sling-bundle-parent</artifactId>
-        <version>49</version>
+        <version>66</version>
         <relativePath />
     </parent>
 
@@ -25,41 +25,19 @@
     <version>1.1.11-SNAPSHOT</version>
 
     <name>Apache Sling Feature API Regions Runtime</name>
-    <description>
-        A runtime component to enforce API Regions
-    </description>
+    <description>A runtime component to enforce API Regions</description>
 
     <scm>
         <connection>scm:git:https://gitbox.apache.org/repos/asf/sling-org-apache-sling-feature-apiregions.git</connection>
         <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/sling-org-apache-sling-feature-apiregions.git</developerConnection>
-        <url>https://github.com/apache/sling-org-apache-sling-feature-apiregions.git</url>
         <tag>HEAD</tag>
+        <url>https://github.com/apache/sling-org-apache-sling-feature-apiregions.git</url>
     </scm>
 
     <properties>
         <sling.java.version>8</sling.java.version>
         <project.build.outputTimestamp>1684851910</project.build.outputTimestamp>
     </properties>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.rat</groupId>
-                <artifactId>apache-rat-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>*.md</exclude>
-                        <exclude>src/test/resources/*</exclude>
-                        <exclude>src/test/resources/printer/*.txt</exclude>
-                        <exclude>src/test/resources/props1/*</exclude>
-                        <exclude>src/test/resources/props2/*</exclude>
-                        <exclude>src/test/resources/props3/*</exclude>
-                        <exclude>src/test/resources/props4/*</exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
     <dependencies>
         <dependency>
             <groupId>org.osgi</groupId>
@@ -100,4 +78,24 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.rat</groupId>
+                <artifactId>apache-rat-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>*.md</exclude>
+                        <exclude>src/test/resources/*</exclude>
+                        <exclude>src/test/resources/printer/*.txt</exclude>
+                        <exclude>src/test/resources/props1/*</exclude>
+                        <exclude>src/test/resources/props2/*</exclude>
+                        <exclude>src/test/resources/props3/*</exclude>
+                        <exclude>src/test/resources/props4/*</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

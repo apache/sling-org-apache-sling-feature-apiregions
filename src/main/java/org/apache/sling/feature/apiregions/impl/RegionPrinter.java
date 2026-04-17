@@ -33,7 +33,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
 
 @SuppressWarnings("java:S3457") // adding platform specific endings makes the process harder and \n should be
-                                // interpreted correctly across all
+// interpreted correctly across all
 public class RegionPrinter {
 
     static final String HEADLINE = "Sling Feature - API Regions";
@@ -61,14 +61,17 @@ public class RegionPrinter {
         Map<String, Entry<String, Version>> bundleLocations = config.getBundleLocationConfigMap();
         bundlesToFeatures.keySet().stream().sorted().forEach(bundle -> {
             Set<String> regions = new HashSet<>();
-            bundlesToFeatures.get(bundle).stream()
-                    .forEach(feature -> Optional.ofNullable(featureRegions.get(feature))
-                            .ifPresent(regions::addAll));
+            bundlesToFeatures.get(bundle).stream().forEach(feature -> Optional.ofNullable(featureRegions.get(feature))
+                    .ifPresent(regions::addAll));
             String location = Optional.ofNullable(bundleLocations.get(bundle))
-                    .map(loc -> loc.getKey() + "v" + loc.getValue().toString()).orElse("null");
-            pw.println(String.format(" - %s\n\t - features: %s\n\t - regions: %s\n\t - location: %s", bundle,
+                    .map(loc -> loc.getKey() + "v" + loc.getValue().toString())
+                    .orElse("null");
+            pw.println(String.format(
+                    " - %s\n\t - features: %s\n\t - regions: %s\n\t - location: %s",
+                    bundle,
                     bundlesToFeatures.get(bundle).stream().collect(Collectors.joining(",")),
-                    regions.stream().collect(Collectors.joining(",")), location));
+                    regions.stream().collect(Collectors.joining(",")),
+                    location));
         });
     }
 
@@ -77,8 +80,12 @@ public class RegionPrinter {
     }
 
     private void renderProperties(PrintWriter pw) {
-        String[] properties = new String[] { Activator.REGIONS_PROPERTY_NAME, RegionConstants.APIREGIONS_JOINGLOBAL,
-                RegionConstants.DEFAULT_REGIONS, RegionConstants.PROPERTIES_FILE_LOCATION };
+        String[] properties = new String[] {
+            Activator.REGIONS_PROPERTY_NAME,
+            RegionConstants.APIREGIONS_JOINGLOBAL,
+            RegionConstants.DEFAULT_REGIONS,
+            RegionConstants.PROPERTIES_FILE_LOCATION
+        };
         Arrays.stream(properties).forEach(p -> pw.println(String.format(" - %s=%s", p, context.getProperty(p))));
     }
 
@@ -88,7 +95,7 @@ public class RegionPrinter {
 
     /**
      * Print out the region information
-     * 
+     *
      * @see org.apache.felix.webconsole.ConfigurationPrinter#printConfiguration(java.io.PrintWriter)
      */
     public void printConfiguration(PrintWriter pw) {
@@ -109,5 +116,4 @@ public class RegionPrinter {
             pw.println("\n\nConfiguration not available");
         }
     }
-
 }

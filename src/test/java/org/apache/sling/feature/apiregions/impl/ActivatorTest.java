@@ -18,15 +18,6 @@
  */
 package org.apache.sling.feature.apiregions.impl;
 
-import static org.apache.sling.feature.apiregions.impl.RegionConstants.BUNDLE_FEATURE_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConstants.FEATURE_REGION_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConstants.IDBSNVER_FILENAME;
-import static org.apache.sling.feature.apiregions.impl.RegionConstants.PROPERTIES_RESOURCE_PREFIX;
-import static org.apache.sling.feature.apiregions.impl.RegionConstants.REGION_PACKAGE_FILENAME;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -62,6 +53,15 @@ import org.osgi.service.cm.ManagedService;
 import org.osgi.util.tracker.ServiceTracker;
 import org.osgi.util.tracker.ServiceTrackerCustomizer;
 
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.BUNDLE_FEATURE_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.FEATURE_REGION_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.IDBSNVER_FILENAME;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.PROPERTIES_RESOURCE_PREFIX;
+import static org.apache.sling.feature.apiregions.impl.RegionConstants.REGION_PACKAGE_FILENAME;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
 public class ActivatorTest {
     private Properties savedProps;
 
@@ -93,22 +93,23 @@ public class ActivatorTest {
         BundleContext bc = Mockito.mock(BundleContext.class);
         Mockito.when(bc.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(bc.getProperty(Activator.REGIONS_PROPERTY_NAME)).thenReturn("*");
-        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).
-            thenReturn(i);
-        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).
-            thenReturn(b);
-        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).
-            thenReturn(f);
-        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).
-            thenReturn(r);
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME))
+                .thenReturn(i);
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME))
+                .thenReturn(b);
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME))
+                .thenReturn(f);
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME))
+                .thenReturn(r);
 
         Activator a = new Activator();
         a.start(bc);
 
-        Mockito.verify(bc, Mockito.times(1)).registerService(
-                Mockito.eq(ResolverHookFactory.class),
-                Mockito.isA(RegionEnforcer.class),
-                Mockito.eq(expectedProps));
+        Mockito.verify(bc, Mockito.times(1))
+                .registerService(
+                        Mockito.eq(ResolverHookFactory.class),
+                        Mockito.isA(RegionEnforcer.class),
+                        Mockito.eq(expectedProps));
 
         Mockito.verify(bc).addFrameworkListener(a);
 
@@ -116,10 +117,11 @@ public class ActivatorTest {
         expectedPrinterProps.put("felix.webconsole.label", RegionPrinter.PATH);
         expectedPrinterProps.put("felix.webconsole.title", RegionPrinter.HEADLINE);
         expectedPrinterProps.put("felix.webconsole.configprinter.modes", "always");
-        Mockito.verify(bc, Mockito.times(1)).registerService(
-                Mockito.eq(RegionPrinter.class),
-                Mockito.isA(RegionPrinter.class),
-                Mockito.eq(expectedPrinterProps));
+        Mockito.verify(bc, Mockito.times(1))
+                .registerService(
+                        Mockito.eq(RegionPrinter.class),
+                        Mockito.isA(RegionPrinter.class),
+                        Mockito.eq(expectedPrinterProps));
     }
 
     @Test
@@ -160,7 +162,7 @@ public class ActivatorTest {
         assertNull(a.webconsoleRegistration);
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({"unchecked", "rawtypes"})
     @Test
     public void testUnregisterHook2() {
         ServiceRegistration reg = Mockito.mock(ServiceRegistration.class);
@@ -176,7 +178,8 @@ public class ActivatorTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testFrameworkEvent() throws Exception {
-        String resourceDir = new File(getClass().getResource("/props3/idbsnver.properties").getFile()).getParent();
+        String resourceDir =
+                new File(getClass().getResource("/props3/idbsnver.properties").getFile()).getParent();
 
         BundleWiring bw = Mockito.mock(BundleWiring.class);
         Mockito.when(bw.getClassLoader()).thenReturn(getClass().getClassLoader());
@@ -186,20 +189,20 @@ public class ActivatorTest {
         Mockito.when(cap.getRevision()).thenReturn(rev);
 
         FrameworkWiring wiring = Mockito.mock(FrameworkWiring.class);
-        Mockito.when(wiring.findProviders(Mockito.any(Requirement.class))).thenAnswer(
-            new Answer<Collection<BundleCapability>>() {
-                @Override
-                public Collection<BundleCapability> answer(InvocationOnMock invocation) throws Throwable {
-                    Requirement req = invocation.getArgument(0);
-                    if ("osgi.wiring.package".equals(req.getNamespace())) {
-                        if ("(osgi.wiring.package=org.osgi.service.cm)".equals(req.getDirectives().get("filter"))) {
-                            return Collections.singleton(cap);
+        Mockito.when(wiring.findProviders(Mockito.any(Requirement.class)))
+                .thenAnswer(new Answer<Collection<BundleCapability>>() {
+                    @Override
+                    public Collection<BundleCapability> answer(InvocationOnMock invocation) throws Throwable {
+                        Requirement req = invocation.getArgument(0);
+                        if ("osgi.wiring.package".equals(req.getNamespace())) {
+                            if ("(osgi.wiring.package=org.osgi.service.cm)"
+                                    .equals(req.getDirectives().get("filter"))) {
+                                return Collections.singleton(cap);
+                            }
                         }
+                        return null;
                     }
-                    return null;
-                }
-            });
-
+                });
 
         Bundle fw = Mockito.mock(Bundle.class);
         Mockito.when(fw.adapt(FrameworkWiring.class)).thenReturn(wiring);
@@ -210,27 +213,31 @@ public class ActivatorTest {
         Mockito.when(bc.getProperty(Activator.REGIONS_PROPERTY_NAME)).thenReturn("*");
         Mockito.when(bc.getProperty(RegionConstants.PROPERTIES_FILE_LOCATION)).thenReturn(resourceDir);
         Mockito.when(bc.registerService(
-            Mockito.eq("org.osgi.service.cm.ManagedService"),
-            Mockito.any(),
-            Mockito.any(Dictionary.class))).thenAnswer(new Answer<ServiceRegistration<?>>() {
-                @Override
-                public ServiceRegistration<?> answer(InvocationOnMock invocation) throws Throwable {
-                    Dictionary<String,?> dict = invocation.getArgument(2);
-                    if ("org.apache.sling.feature.apiregions.impl".equals(dict.get("service.pid"))) {
-                        managedServices.add(invocation.getArgument(1));
+                        Mockito.eq("org.osgi.service.cm.ManagedService"), Mockito.any(), Mockito.any(Dictionary.class)))
+                .thenAnswer(new Answer<ServiceRegistration<?>>() {
+                    @Override
+                    public ServiceRegistration<?> answer(InvocationOnMock invocation) throws Throwable {
+                        Dictionary<String, ?> dict = invocation.getArgument(2);
+                        if ("org.apache.sling.feature.apiregions.impl".equals(dict.get("service.pid"))) {
+                            managedServices.add(invocation.getArgument(1));
+                        }
+                        return Mockito.mock(ServiceRegistration.class);
                     }
-                    return Mockito.mock(ServiceRegistration.class);
-                }
-            });
+                });
         Mockito.when(bc.registerService(
-                Mockito.eq(ResolverHookFactory.class),
-                Mockito.isA(RegionEnforcer.class),
-                Mockito.any(Dictionary.class))).thenReturn(Mockito.mock(ServiceRegistration.class));
-
+                        Mockito.eq(ResolverHookFactory.class),
+                        Mockito.isA(RegionEnforcer.class),
+                        Mockito.any(Dictionary.class)))
+                .thenReturn(Mockito.mock(ServiceRegistration.class));
 
         Activator a = new Activator();
         a.bundleContext = bc;
-        a.configuration = new RegionConfiguration(Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptySet());
+        a.configuration = new RegionConfiguration(
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                Collections.emptySet());
         FrameworkEvent ev = Mockito.mock(FrameworkEvent.class);
         Mockito.when(ev.getType()).thenReturn(FrameworkEvent.STARTED);
 
@@ -310,34 +317,33 @@ public class ActivatorTest {
         BundleContext bc = Mockito.mock(BundleContext.class);
         Mockito.when(bc.getBundle()).thenReturn(Mockito.mock(Bundle.class));
         Mockito.when(bc.getProperty(Activator.REGIONS_PROPERTY_NAME)).thenReturn("*");
-        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME)).
-            thenReturn(i);
-        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME)).
-            thenReturn(b);
-        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME)).
-            thenReturn(f);
-        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME)).
-            thenReturn(r);
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + IDBSNVER_FILENAME))
+                .thenReturn(i);
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + BUNDLE_FEATURE_FILENAME))
+                .thenReturn(b);
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + FEATURE_REGION_FILENAME))
+                .thenReturn(f);
+        Mockito.when(bc.getProperty(PROPERTIES_RESOURCE_PREFIX + REGION_PACKAGE_FILENAME))
+                .thenReturn(r);
 
         ConfigurationAdmin cm = Mockito.mock(ConfigurationAdmin.class);
-        Mockito.when(cm.listConfigurations("(service.factoryPid=org.apache.sling.feature.apiregions.factory)")).
-            thenAnswer(new Answer<Configuration[]>() {
-                @Override
-                public Configuration[] answer(InvocationOnMock invocation) throws Throwable {
-                    Dictionary<String, Object> props = new Hashtable<>();
-                    props.put("foo", "bar");
+        Mockito.when(cm.listConfigurations("(service.factoryPid=org.apache.sling.feature.apiregions.factory)"))
+                .thenAnswer(new Answer<Configuration[]>() {
+                    @Override
+                    public Configuration[] answer(InvocationOnMock invocation) throws Throwable {
+                        Dictionary<String, Object> props = new Hashtable<>();
+                        props.put("foo", "bar");
 
-                    Configuration cfg = Mockito.mock(Configuration.class);
-                    Mockito.when(cfg.getPid()).thenReturn("org.apache.sling.feature.apiregions.factory~123");
-                    Mockito.when(cfg.getProperties()).thenReturn(props);
+                        Configuration cfg = Mockito.mock(Configuration.class);
+                        Mockito.when(cfg.getPid()).thenReturn("org.apache.sling.feature.apiregions.factory~123");
+                        Mockito.when(cfg.getProperties()).thenReturn(props);
 
-                    return new Configuration[] {cfg};
-                }
-            });
+                        return new Configuration[] {cfg};
+                    }
+                });
 
         ServiceReference<Object> caRef = Mockito.mock(ServiceReference.class);
         Mockito.when(bc.getService(caRef)).thenReturn(cm);
-
 
         Activator a = new Activator();
         a.start(bc);
