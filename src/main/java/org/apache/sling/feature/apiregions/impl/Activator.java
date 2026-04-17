@@ -59,6 +59,8 @@ public class Activator implements BundleActivator, FrameworkListener {
 
     static final String REGIONS_PROPERTY_NAME = "org.apache.sling.feature.apiregions.regions";
 
+    static final String DISABLE_PROPERTY_NAME = "org.apache.sling.feature.apiregions.disable";
+
     static final Logger LOG = Logger.getLogger(ResolverHookImpl.class.getName());
 
     BundleContext bundleContext;
@@ -72,6 +74,12 @@ public class Activator implements BundleActivator, FrameworkListener {
     @Override
     public synchronized void start(BundleContext context) throws Exception {
         bundleContext = context;
+
+        final boolean disabled = Boolean.parseBoolean(context.getProperty(DISABLE_PROPERTY_NAME));
+        if (disabled) {
+            LOG.info("API Regions runtime enforcement component is disabled");
+            return;
+        }
 
         createConfiguration();
 

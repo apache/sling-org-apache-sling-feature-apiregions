@@ -24,14 +24,17 @@ the above framework properties:
 
 File locations are either provided as an absolute file path or by URL. The URL handling mechanism supports one special pseudo-protocol:
 `classloader://`. URLs specified with this protocol are passed through the framework classloader's `getResource()` method to obtain
-the actual URL. 
+the actual URL.
 
 ## Enabling / disabling this component
-The component is enabled by setting the following framework property:
+
+If the framework property `org.apache.sling.feature.apiregions.disable` is set to `true` the component is completely disabled.
+
+The checking is enabled by setting the following framework property:
 
     org.apache.sling.feature.apiregions.regions=*
 
-If this framework property is not set the component will be disabled.
+If this framework property is not set the checking will be disabled.
 
 ## Additional Configuration
 
@@ -41,6 +44,7 @@ The following framework properties are also recognised:
 * `sling.feature.apiregions.joinglobal` - a comma-separated list of region names. All packages exported by these regions are added to the `global` region.
 
 ## Runtime Configuration
+
 If this component runs in a framework with Configuration Admin present, and it is set to be enabled using the framework property, it can be disabled at runtime
 through Configuration Admin configuration.
 
@@ -48,12 +52,12 @@ Runtime configuration supported:
 
 **PID**: `org.apache.sling.feature.apiregions.impl`
 
-Key | Value  
+Key | Value
 --- | ---
 `disable` | if `true` then the API Regions component is disabled. Otherwise the component is enabled.
 
 No meta type is defined for this configuration since it's not a typical user setting. However, when using the web console
-the configuration can be created using `curl`: 
+the configuration can be created using `curl`:
 
     curl -u <user>:<pass> -X POST -d "apply=true" -d "propertylist=disable" -d "disable=true" http://localhost:8080/system/console/configMgr/org.apache.sling.feature.apiregions.impl
 
